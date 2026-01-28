@@ -1,0 +1,22 @@
+# FITNESS COACH SYSTEM — Cursor Rules
+
+## О проекте
+Коробочная SaaS-система для фитнес-тренеров. Владелец: Николай (Бали).
+
+## Технологии
+- Backend: Google Apps Script
+- Frontend: Vanilla HTML/CSS/JS
+- Database: Google Sheets
+- Hosting: Netlify
+
+## Правила кода
+- Комментарии: РУССКИЙ
+- Переменные: английский (camelCase)
+- Mobile-first дизайн
+- Кодировка: UTF-8
+
+## Клиенты
+- Mark (online) — 90 дней
+- Yaroslav (offline) — сплит
+- Kirill (offline) — фулбоди
+- Alena (hybrid) 
