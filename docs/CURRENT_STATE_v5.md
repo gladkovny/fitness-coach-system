@@ -12,16 +12,17 @@
 Dashboard          ✅ Работает  v10.9
 Coach Tracker      ✅ Работает  v10.0
 Workout Tracker    ✅ Работает  v9.0
-Unified Tracker    ✅ Работает  v4.4
+Unified Tracker    ✅ Работает  v4.4 (6131 строк)
 Offline Dashboard  ✅ Работает  v4
-Master API         ✅ Работает  v6.7
-База упражнений    ✅ Готова    126 шт
+Master API         ✅ Работает  v7.0 (sync endpoints)
+База упражнений    ✅ Готова    126 шт + коэффициенты мышц
 ─────────────────────────────────────
 GitHub             ✅ Подключен gladkovny/fitness-coach-system
 Cursor             ✅ Настроен  + .cursorrules
 ─────────────────────────────────────
-Тестирование Марк  🔄 День 24 из 90 (online/hybrid)
-Тестирование офлайн 🔄 Ярослав, Кирилл
+Тестирование Марк  🔄 День 24 из 90 (hybrid)
+Тестирование офлайн 🔄 Ярослав (split), Кирилл (fullbody)
+Онбординг          🔄 Алена (тест Google Form → Assessment)
 ─────────────────────────────────────
 Фаза 1 MVP         ✅ Завершена
 Фаза 2 Offline     🔄 ~85% готово
@@ -40,61 +41,36 @@ Cursor             ✅ Настроен  + .cursorrules
 
 | Инструмент | Для чего использовать |
 |------------|----------------------|
-| **Claude.ai** | Планирование, архитектура, анализ Excel, сложные баги |
+| **Claude.ai** | Планирование, архитектура, анализ Excel/CSV, сложные баги |
 | **Cursor** | Написание и редактирование кода, рефакторинг |
 | **Git Bash** | Коммиты и синхронизация с GitHub |
 
-### Команды Git (для Git Bash)
-
+### Команды Git
 ```bash
-# После изменений в Cursor:
+# После изменений:
 git add .
 git commit -m "Описание изменений"
 git push
 
-# Перед работой (получить последние изменения):
+# Перед работой:
 git pull
 ```
 
-### Структура в GitHub
-
-```
-fitness-coach-system/
-├── .cursorrules           # Правила для Cursor AI
-├── Dashboard_offline/     # Офлайн дашборд
-├── HTML/                  # Веб-версии для деплоя
-├── Master API/            # Google Apps Script
-├── Old clients/           # Архив старых клиентов
-├── Traker offlain coach/  # Трекер офлайн тренера
-└── Марк/                  # Данные клиента Марк
-```
-
 ---
 
-## 📈 ПРОГРЕСС ПО ФАЗАМ
-
-```
-ФАЗА 1: MVP Online     [████████████████████] 100% ✅
-ФАЗА 2: Offline        [█████████████████░░░]  85% 🔄
-ФАЗА 3: Hybrid         [░░░░░░░░░░░░░░░░░░░░]   0%
-ФАЗА 4: Franchise      [░░░░░░░░░░░░░░░░░░░░]   0%
-
-ОБЩИЙ ПРОГРЕСС        [██████████░░░░░░░░░░]  46%
-```
-
----
-
-## ⚙️ MASTER API v6.7
+## ⚙️ MASTER API v7.0
 
 ### Ключевые возможности
 - ✅ Мультиклиентная архитектура
 - ✅ Online + Offline режимы
-- ✅ База упражнений (126 шт)
-- ✅ MandatoryTasks (обязательные задачи)
+- ✅ База упражнений (126 шт + muscle coefficients)
+- ✅ MandatoryTasks (обязательные задачи клиента)
 - ✅ WorkoutSessions + WorkoutLog
 - ✅ TrainingBlocks (учёт купленных тренировок)
 - ✅ deleteSession (удаление тренировок)
 - ✅ Автосоздание Daily с InBody полями
+- ✅ **syncBlockToMaster** — синхронизация блока в Coach Master
+- ✅ **syncAllBlocks** — синхронизация всех блоков клиента
 
 ### Endpoints — Online
 
@@ -121,6 +97,8 @@ fitness-coach-system/
 | `addSet` | Добавить подход |
 | `finishWorkout` | Завершить тренировку |
 | `deleteSession` | Удалить тренировку |
+| `syncBlockToMaster` | Синхронизировать блок |
+| `syncAllBlocks` | Синхронизировать все блоки |
 
 ---
 
@@ -142,7 +120,7 @@ fitness-coach-system/
 | Параметр | Значение |
 |----------|----------|
 | Тип | Split (3 дня/нед) |
-| Особенности | Недоразвитая НС правой руки |
+| Особенности | Недоразвитая НС правой руки, компенсация левой стороной |
 | MandatoryTasks | ЛФК кисти, растяжка |
 | Статус | ✅ Активно тестирует |
 
@@ -153,17 +131,27 @@ fitness-coach-system/
 | Тип | FullBody (3 дня/нед) |
 | Особенности | Проблемы с осанкой |
 | MandatoryTasks | Дыхание 360, ЛФК осанки |
+| TrainingBlock | ID 1, 10 сессий куплено, 3 использовано |
 | Статус | ✅ Активно тестирует |
+
+### Алена (Onboarding Test)
+
+| Параметр | Значение |
+|----------|----------|
+| Цель | Тестирование системы онбординга |
+| Этап | Google Form → ClientProfile → Assessment |
+| Компоненты | ONBOARDING_V2.gs, assessment.html |
+| Статус | 🔄 В процессе |
 
 ---
 
-## 🔗 АРХИТЕКТУРА
+## 🏗️ АРХИТЕКТУРА
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
 │   ONLINE                    MASTER API              CLIENT      │
-│   ───────                     (v6.7)                ──────      │
+│   ───────                     (v7.0)                ──────      │
 │   Coach Tracker  ──────────►    │    ◄──────────  Dashboard     │
 │   (v10.0)                       │                   (v10.9)     │
 │                                 │                               │
@@ -178,6 +166,7 @@ fitness-coach-system/
 │                    │  ┌─────────────────┐  │                    │
 │                    │  │ Clients         │  │                    │
 │                    │  │ Exercises (126) │  │                    │
+│                    │  │ ClientBlocks    │◄─┼─ Sync              │
 │                    │  │ Settings        │  │                    │
 │                    │  └─────────────────┘  │                    │
 │                    └───────────┬───────────┘                    │
@@ -189,7 +178,7 @@ fitness-coach-system/
 │   │  (hybrid) │         │ (offline) │         │ (offline) │   │
 │   │ Daily     │         │ Sessions  │         │ Sessions  │   │
 │   │ Nutrition │         │ WorkoutLog│         │ WorkoutLog│   │
-│   │ Sessions  │         │ Mandatory │         │ Mandatory │   │
+│   │ Sessions  │         │ Mandatory │         │ Blocks    │   │
 │   └───────────┘         └───────────┘         └───────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -204,28 +193,16 @@ fitness-coach-system/
 - [ ] Фикс багов по фидбеку Ярослава и Кирилла
 - [ ] Марк: День 24/90
 
-### Приоритет 2: Онбординг клиента
-- [ ] Google Form для первичной анкеты
-- [ ] Скрипт автозаполнения Goals
-- [ ] Лист Assessment (результаты тестирования)
+### Приоритет 2: Онбординг клиента (🔄 в работе)
+- [x] Google Form для первичной анкеты
+- [x] ONBOARDING_V2.gs — скрипт интеграции
+- [x] assessment.html — интерфейс тестирования
+- [ ] Тестирование на Алене — завершить цикл
+- [ ] Автозаполнение Goals из формы
 
 ### Приоритет 3: Партнёрская программа
 - [ ] Список 5-7 потенциальных партнёров
-- [ ] Презентация/оффер для партнёров
-
----
-
-## 🛠️ ТЕХНОЛОГИИ
-
-| Компонент | Технология |
-|-----------|------------|
-| Backend | Google Apps Script |
-| Frontend | Vanilla HTML/CSS/JS |
-| Database | Google Sheets |
-| Hosting | Netlify |
-| Charts | Chart.js |
-| Version Control | Git + GitHub |
-| IDE | Cursor |
+- [ ] Презентация/оффер для бета-тренеров
 
 ---
 
@@ -234,13 +211,60 @@ fitness-coach-system/
 - **Комментарии:** русский язык
 - **Переменные:** английский (camelCase)
 - **Константы:** UPPER_SNAKE_CASE
-- **Кодировка:** UTF-8 (проверять перед коммитом!)
-- **Mobile-first:** дизайн сначала для мобильных
+- **Кодировка:** UTF-8
 
-### Проверка кодировки (Git Bash)
+### ⚠️ КРИТИЧНО: Проверка кодировки перед деплоем
 ```bash
 file <путь_к_файлу>
-# Должно показать: UTF-8 или ASCII
+grep -c "Ð" <путь_к_файлу>
+# Должно показать: UTF-8 или ASCII, 0 вхождений "Ð"
+```
+
+---
+
+## 🔧 КЛЮЧЕВЫЕ ТЕХНИЧЕСКИЕ ПАТТЕРНЫ
+
+### 1. EXPLICIT_EXERCISE_RULES
+При распознавании упражнений ВСЕГДА использовать явные правила с regex перед fuzzy matching:
+```javascript
+const EXPLICIT_EXERCISE_RULES = [
+  { pattern: /разгибан.*блок/i, exercise: 'tricep_pushdown', subcategory: 'Трицепс' },
+  { pattern: /сгибан.*блок/i, exercise: 'cable_curl', subcategory: 'Бицепс' },
+  // ...
+];
+```
+
+### 2. Muscle Coefficients
+Коэффициенты мышц должны учитывать subcategory, а не только category:
+```javascript
+function generateDefaultCoeffs(category, subcategory) {
+  if (subcategory === 'Трицепс') return { triceps: 1.0 };
+  if (subcategory === 'Бицепс') return { biceps: 1.0 };
+  // ...
+}
+```
+
+### 3. Proportional Redistribution
+При изменении одного коэффициента, остальные перераспределяются пропорционально:
+```javascript
+function redistributeCoeffs(coeffs, changedMuscle, newValue) {
+  const remaining = 1 - newValue;
+  const others = Object.keys(coeffs).filter(m => m !== changedMuscle);
+  const sumOthers = others.reduce((s, m) => s + coeffs[m], 0);
+  others.forEach(m => coeffs[m] = (coeffs[m] / sumOthers) * remaining);
+  coeffs[changedMuscle] = newValue;
+}
+```
+
+### 4. Auto-creation вместо existence checks
+При обновлении API использовать ensureColumns/ensureSheet вместо проверок:
+```javascript
+// ПРАВИЛЬНО:
+ensureColumn(sheet, 'InBodyWeight');
+ensureSheet(ss, 'TrainingBlocks');
+
+// НЕПРАВИЛЬНО:
+if (!sheet.getRange(...).getValue()) { ... }
 ```
 
 ---
@@ -249,12 +273,13 @@ file <путь_к_файлу>
 
 | Дата | Компонент | Версия | Изменения |
 |------|-----------|--------|-----------|
+| 28.01.2026 | Master API | 7.0 | syncBlockToMaster, syncAllBlocks |
 | 28.01.2026 | Проект | — | GitHub + Cursor синхронизация |
-| 26.01.2026 | Master API | 6.7 | deleteSession, Daily auto |
-| 26.01.2026 | Unified Tracker | 4.4 | Стабилизация |
+| 27.01.2026 | Unified Tracker | 4.4 | EXPLICIT_EXERCISE_RULES, redistribution |
+| 26.01.2026 | Master API | 6.7 | deleteSession, Daily auto с InBody |
 | 26.01.2026 | Offline Dashboard | 4 | Прогресс тренировок |
+| 25.01.2026 | Dashboard | 10.9 | DATE_COMPAT fix |
 | 21.01.2026 | Master API | 6.1 | Offline endpoints |
-| 15.01.2026 | Dashboard | 10.9 | Совместимость с API |
 
 ---
 
@@ -262,6 +287,7 @@ file <путь_к_файлу>
 
 - AI распознавание упражнений по фото/видео
 - InBody OCR сервис (Google Vision API)
-- 3D визуализация тела с heatmap мышц
-- Справочник TaskCategories
-- Обновление дизайна трекера
+- 3D визуализация тела с heatmap мышц (греческие статуи)
+- Справочник TaskCategories (отдельный лист в Coach Master)
+- Сравнение интенсивности по мышечным группам (грудь vs грудь, ноги vs ноги)
+- Обновление дизайна трекера (единый нейтральный стиль)
