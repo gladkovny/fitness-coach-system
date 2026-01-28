@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Вводная оценка — Fitness Coach</title>
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --border: #2a2a4a;
+            --text: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent: #a855f7;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+        
+        .app-header {
+            background: var(--card);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .app-title { font-size: 1.2em; font-weight: 700; color: var(--accent); }
+        
+        .back-btn {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        
+        .client-selector {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 1em;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2394a3b8' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 24px;
+        }
+        
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 12px 16px;
+            border: 1px solid var(--border);
+        }
+        
+        .card-title {
+            font-size: 1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--accent);
+            margin: 20px 16px 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        /* Grid System */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .col-full { grid-column: 1 / -1; }
+        
+        /* Info Items */
+        .info-item {
+            background: var(--bg);
+            padding: 10px 12px;
+            border-radius: 10px;
+        }
+        
+        .info-label {
+            font-size: 0.7em;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        
+        .info-value.warning { color: var(--warning); }
+        .info-value.danger { color: var(--danger); }
+        .info-value.success { color: var(--success); }
+        .info-value.small { font-size: 0.85em; font-weight: 400; }
+        
+        /* Forms */
+        .form-group { margin-bottom: 12px; }
+        .form-label { 
+            display: block; 
+            font-size: 0.8em; 
+            color: var(--text-secondary); 
+            margin-bottom: 6px;
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 1em;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-textarea:focus { 
+            outline: none; 
+            border-color: var(--accent); 
+        }
+        .form-textarea { resize: vertical; min-height: 60px; }
+        
+        /* Rating Scale */
+        .rating-scale {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+        
+        .rating-btn {
+            padding: 12px 4px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        
+        .rating-btn:active { transform: scale(0.95); }
+        .rating-btn.active { color: white; }
+        .rating-btn[data-value="1"].active { background: #ef4444; border-color: #ef4444; }
+        .rating-btn[data-value="2"].active { background: #f97316; border-color: #f97316; }
+        .rating-btn[data-value="3"].active { background: #eab308; border-color: #eab308; }
+        .rating-btn[data-value="4"].active { background: #84cc16; border-color: #84cc16; }
+        .rating-btn[data-value="5"].active { background: #22c55e; border-color: #22c55e; }
+        
+        /* Test Input */
+        .test-row {
+            display: grid;
+            grid-template-columns: 1fr 44px;
+            gap: 8px;
+            align-items: end;
+        }
+        
+        .x-btn {
+            width: 44px; height: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-secondary);
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        
+        .x-btn.active {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+        
+        /* Technique with weight */
+        .technique-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .technique-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .technique-name { font-size: 0.9em; }
+        
+        .technique-weight {
+            width: 70px;
+            padding: 6px 8px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.85em;
+            text-align: center;
+        }
+        
+        /* KBJU Card */
+        .kbju-card {
+            background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(59,130,246,0.1));
+            border: 1px solid var(--accent);
+        }
+        
+        .kbju-values {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+        
+        .kbju-item {
+            background: var(--bg);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        
+        .kbju-num { font-size: 1.1em; font-weight: 700; color: var(--accent); }
+        .kbju-label { font-size: 0.7em; color: var(--text-secondary); }
+        
+        /* Buttons */
+        .btn {
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+        
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+        .btn-success { background: var(--success); color: white; }
+        
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+        
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.15);
+            border-left: 3px solid #f59e0b;
+            color: #fbbf24;
+        }
+        
+        .alert-info {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 3px solid #3b82f6;
+            color: #60a5fa;
+        }
+        
+        /* Fixed Button */
+        .fixed-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            background: linear-gradient(transparent, var(--bg) 20%);
+            padding-top: 40px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+        }
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+        @keyframes slideUp { from { transform: translate(-50%, 20px); opacity: 0; } }
+        
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .loading-content { 
+            background: var(--card); 
+            padding: 24px 32px; 
+            border-radius: 16px; 
+            text-align: center; 
+        }
+        .spinner { 
+            width: 40px; height: 40px; 
+            border: 3px solid var(--border); 
+            border-top-color: var(--accent); 
+            border-radius: 50%; 
+            animation: spin 0.8s linear infinite; 
+            margin: 0 auto 12px; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: var(--card);
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+        
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--card);
+        }
+        
+        .modal-title { font-size: 1.1em; font-weight: 600; }
+        
+        .modal-close {
+            width: 32px; height: 32px;
+            border: none;
+            background: var(--bg);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        
+        .modal-body { padding: 16px; }
+        
+        .modal-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-footer .btn { flex: 1; }
+        
+        /* Summary */
+        .summary-section { margin-bottom: 16px; }
+        
+        .summary-title {
+            font-size: 0.85em;
+            color: var(--accent);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9em;
+        }
+        
+        .summary-row:last-child { border: none; }
+        
+        .summary-label { color: var(--text-secondary); }
+        .summary-value { font-weight: 500; }
+        .summary-value.good { color: var(--success); }
+        .summary-value.warn { color: var(--warning); }
+        .summary-value.bad { color: var(--danger); }
+        
+        /* Block Form */
+        .block-form {
+            background: linear-gradient(135deg, rgba(34,197,94,0.1), rgba(59,130,246,0.1));
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .block-form-title {
+            font-size: 1em;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Category colors */
+        .cat-info { border-top: 3px solid #3b82f6; }
+        .cat-info .card-title { color: #3b82f6; }
+        
+        .cat-inbody { border-top: 3px solid #8b5cf6; }
+        .cat-inbody .card-title { color: #8b5cf6; }
+        
+        .cat-mobility { border-top: 3px solid #f59e0b; }
+        .cat-mobility .card-title { color: #f59e0b; }
+        
+        .cat-coordination { border-top: 3px solid #06b6d4; }
+        .cat-coordination .card-title { color: #06b6d4; }
+        
+        .cat-strength { border-top: 3px solid #ef4444; }
+        .cat-strength .card-title { color: #ef4444; }
+        
+        .cat-technique { border-top: 3px solid #22c55e; }
+        .cat-technique .card-title { color: #22c55e; }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-row">
+            <div class="app-title">📋 Вводная оценка</div>
+            <a href="index.html" class="back-btn">←</a>
+        </div>
+        <select class="client-selector" id="clientSelector" onchange="selectClient(this.value)">
+            <option value="">— Выберите клиента —</option>
+        </select>
+    </header>
+    
+    <main id="mainContent">
+        <div class="card">
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                Выберите клиента для проведения вводной оценки
+            </div>
+        </div>
+    </main>
+    
+    <div class="fixed-bottom" id="saveBtn" style="display: none;">
+        <button class="btn btn-primary" onclick="saveAssessment()">
+            💾 Сохранить оценку
+        </button>
+    </div>
+    
+    <div class="loading-overlay" id="loading" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div id="loadingText">Загрузка...</div>
+        </div>
+    </div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+const API_URL = 'https://script.google.com/macros/s/AKfycbz5pCKFsjW3anbbor14rcMOc8snqE-R0WrsSJJWjdAgib5b-hbtTkkp8gUdFzsSfc-d/exec';
+
+const LABELS = {
+    weight_loss: 'Похудение',
+    muscle_gain: 'Набор массы',
+    general_fitness: 'Общая форма',
+    health_wellness: 'Здоровье',
+    strength: 'Сила',
+    endurance: 'Выносливость',
+    rehab: 'Реабилитация',
+    other: 'Другое',
+    none: 'Нет опыта',
+    less_6m: 'Менее 6 мес',
+    '6m_2y': '6 мес — 2 года',
+    over_2y: 'Более 2 лет',
+    sedentary: 'Сидячий',
+    light: 'Лёгкая',
+    moderate: 'Умеренная',
+    active: 'Активная',
+    very_active: 'Очень активная',
+    '1_month': '1 месяц',
+    '3_months': '3 месяца',
+    '6_months': '6 месяцев',
+    '1_year': '1 год',
+    no_deadline: 'Без срока'
+};
+
+// Упражнения для оценки техники (можно загружать из Coach Master)
+const TECHNIQUE_EXERCISES = [
+    { id: 'bulgarian_split', name: 'Болгарский выпад', defaultReps: 5 },
+    { id: 'lat_pulldown', name: 'Вертикальная тяга', defaultReps: 8 },
+    { id: 'incline_press', name: 'Жим лёжа (наклон)', defaultReps: 8 },
+    { id: 'hyperextension', name: 'Гиперэкстензия', defaultReps: 10 },
+    { id: 'shoulder_press', name: 'Жим вверх', defaultReps: 8 }
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let clients = [];
+let currentClient = null;
+let clientData = null;
+let assessmentData = {};
+let calculatedKBJU = {};
+let savedAssessmentData = null;
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadClients();
+    const clientId = new URLSearchParams(location.search).get('client') || localStorage.getItem('lastAssessmentClient');
+    if (clientId) {
+        document.getElementById('clientSelector').value = clientId;
+        await selectClient(clientId);
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════════
+
+async function apiCall(action, params = {}) {
+    const url = new URL(API_URL);
+    url.searchParams.set('action', action);
+    Object.entries(params).forEach(([k, v]) => v != null && url.searchParams.set(k, v));
+    const r = await fetch(url);
+    return r.json();
+}
+
+async function apiPost(action, data) {
+    const r = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...data })
+    });
+    return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENTS
+// ═══════════════════════════════════════════════════════════════
+
+async function loadClients() {
+    showLoading('Загрузка клиентов...');
+    try {
+        const res = await apiCall('getClients');
+        clients = res.clients || [];
+        document.getElementById('clientSelector').innerHTML = 
+            '<option value="">— Выберите клиента —</option>' +
+            clients.map(c => `<option value="${c.id}">${c.name} ${c.status === 'pending_assessment' ? '⚠️' : ''}</option>`).join('');
+    } catch (e) {
+        showToast('Ошибка загрузки: ' + e.message, 'error');
+    }
+    hideLoading();
+}
+
+async function selectClient(id) {
+    if (!id) {
+        currentClient = null;
+        clientData = null;
+        document.getElementById('mainContent').innerHTML = '<div class="card"><div style="text-align:center;padding:40px;color:var(--text-secondary)">Выберите клиента</div></div>';
+        document.getElementById('saveBtn').style.display = 'none';
+        return;
+    }
+    
+    currentClient = clients.find(c => c.id === id);
+    localStorage.setItem('lastAssessmentClient', id);
+    assessmentData = {};
+    savedAssessmentData = null;
+    
+    showLoading('Загрузка данных клиента...');
+    try {
+        const [goalsRes, profileRes, nutritionRes] = await Promise.all([
+            apiCall('getGoals', { clientId: id }),
+            apiCall('getClientProfile', { clientId: id }),
+            apiCall('getNutrition', { clientId: id })
+        ]);
+        
+        clientData = {
+            goals: goalsRes.goals || goalsRes || {},
+            profile: profileRes.profile || profileRes || {},
+            nutrition: nutritionRes.nutrition || nutritionRes || {}
+        };
+        
+    } catch (e) {
+        console.error('Error loading client:', e);
+        clientData = { goals: {}, profile: {}, nutrition: {} };
+    }
+    hideLoading();
+    
+    render();
+    document.getElementById('saveBtn').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+
+function render() {
+    const g = clientData.goals;
+    const p = clientData.profile;
+    const n = clientData.nutrition;
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Данные из профиля или целей
+    const age = p.age || calcAge(g.birth_date || p.birth_date);
+    const weight = parseFloat(p.weight || g.start_weight) || 0;
+    const height = parseFloat(p.height || g.height) || 0;
+    const gender = p.gender || g.gender || 'male';
+    const bmi = height > 0 ? (weight / Math.pow(height / 100, 2)).toFixed(1) : null;
+    const bmiClass = getBmiClass(bmi);
+    
+    // Здоровье
+    const healthIssues = collectHealthIssues(g, p);
+    
+    // КБЖУ из Nutrition (уже рассчитанный)
+    calculatedKBJU = {
+        calories: n.target_calories || 0,
+        protein: n.target_protein || 0,
+        fat: n.target_fats || 0,
+        carbs: n.target_carbs || 0,
+        bmr: n.BMR_final || n.BMR || 0
+    };
+    
+    let html = `
+        <!-- Дата оценки -->
+        <div class="card">
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Дата оценки</label>
+                <input type="date" class="form-input" id="assessDate" value="${today}">
+            </div>
+            ${currentClient.status === 'pending_assessment' ? 
+                '<div class="alert alert-warning" style="margin-top:12px">⚠️ Первичная оценка. Статус изменится после создания блока.</div>' : ''}
+        </div>
+        
+        <!-- Карточка клиента -->
+        <div class="card cat-info">
+            <div class="card-title">👤 ${currentClient.name}</div>
+            
+            <div class="grid-2" style="margin-bottom:10px">
+                <div class="info-item">
+                    <div class="info-label">Возраст</div>
+                    <div class="info-value">${age ? age + ' лет' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Рост</div>
+                    <div class="info-value">${height ? height + ' см' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Вес</div>
+                    <div class="info-value">${weight ? weight + ' кг' : '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">ИМТ</div>
+                    <div class="info-value ${bmiClass}">${bmi || '—'}</div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-bottom:10px">
+                <div class="info-item">
+                    <div class="info-label">Цель</div>
+                    <div class="info-value">${LABELS[g.main_goal] || g.main_goal || g.main_goal_custom || '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Срок</div>
+                    <div class="info-value">${LABELS[g.goal_timeframe] || g.goal_timeframe || '—'}</div>
+                </div>
+            </div>
+            
+            ${g.target_weight ? `
+            <div class="grid-2" style="margin-bottom:10px">
+                <div class="info-item">
+                    <div class="info-label">Целевой вес</div>
+                    <div class="info-value">${g.target_weight} кг</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">До цели</div>
+                    <div class="info-value ${weight > g.target_weight ? 'warning' : 'success'}">${Math.abs(weight - g.target_weight).toFixed(1)} кг</div>
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="grid-2" style="margin-bottom:10px">
+                <div class="info-item">
+                    <div class="info-label">Опыт</div>
+                    <div class="info-value">${LABELS[g.training_experience] || g.training_experience || p.fitnessLevel || '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Активность</div>
+                    <div class="info-value">${LABELS[g.activity_level] || g.activity_level || '—'}</div>
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-bottom:10px">
+                <div class="info-item">
+                    <div class="info-label">Дней/неделю</div>
+                    <div class="info-value">${g.days_per_week || '—'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Время</div>
+                    <div class="info-value">${g.preferred_time || '—'}</div>
+                </div>
+            </div>
+            
+            ${healthIssues ? `
+            <div class="info-item" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);">
+                <div class="info-label" style="color: var(--warning)">⚠️ Ограничения здоровья</div>
+                <div class="info-value warning small">${healthIssues}</div>
+            </div>
+            ` : ''}
+        </div>
+        
+        <!-- Заметки -->
+        <div class="card">
+            <div class="card-title">📝 Заметки тренера</div>
+            <textarea class="form-textarea" id="notes_general" rows="2" placeholder="Уточнения по анкете, травмам, целям..."></textarea>
+        </div>
+        
+        <!-- InBody -->
+        <div class="section-title">📊 Замеры InBody</div>
+        <div class="card cat-inbody">
+            <div class="card-title">💪 Состав тела</div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Актуальный вес (кг)</label>
+                    <input type="number" class="form-input" id="inbody_weight" step="0.1" 
+                           placeholder="${weight || '—'}" onchange="recalcKBJU()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Жир (%)</label>
+                    <input type="number" class="form-input" id="inbody_fat" step="0.1" placeholder="—">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Мышцы (кг)</label>
+                    <input type="number" class="form-input" id="inbody_muscle" step="0.1" placeholder="—">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Базальный метаб. (ккал)</label>
+                    <input type="number" class="form-input" id="inbody_bmr" placeholder="${calculatedKBJU.bmr || '—'}" onchange="recalcKBJU()">
+                </div>
+            </div>
+            <div class="alert alert-info" style="margin-top:8px; font-size:0.8em;">
+                💡 Данные InBody автоматически обновят лист Nutrition
+            </div>
+        </div>
+        
+        <!-- КБЖУ -->
+        <div class="card kbju-card">
+            <div class="card-title">🎯 Рекомендуемый КБЖУ</div>
+            <div class="kbju-values" id="kbjuDisplay">
+                <div class="kbju-item">
+                    <div class="kbju-num" id="kbju_cal">${calculatedKBJU.calories || '—'}</div>
+                    <div class="kbju-label">ккал</div>
+                </div>
+                <div class="kbju-item">
+                    <div class="kbju-num" id="kbju_p">${calculatedKBJU.protein || '—'}</div>
+                    <div class="kbju-label">белок</div>
+                </div>
+                <div class="kbju-item">
+                    <div class="kbju-num" id="kbju_f">${calculatedKBJU.fat || '—'}</div>
+                    <div class="kbju-label">жиры</div>
+                </div>
+                <div class="kbju-item">
+                    <div class="kbju-num" id="kbju_c">${calculatedKBJU.carbs || '—'}</div>
+                    <div class="kbju-label">углеводы</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Тестирование -->
+        <div class="section-title">🏋️ Тестирование</div>
+        
+        <!-- Подвижность -->
+        <div class="card cat-mobility">
+            <div class="card-title">🧘 Подвижность / Гибкость</div>
+            <div class="form-group">
+                <label class="form-label">Общая оценка</label>
+                <div class="rating-scale" data-key="mobility_score">
+                    ${[1,2,3,4,5].map(n => `<button type="button" class="rating-btn" data-value="${n}" onclick="setRating('mobility_score',${n})">${n}</button>`).join('')}
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Заметки</label>
+                <textarea class="form-textarea" id="mobility_notes" rows="2" placeholder="Ограничения, проблемные зоны..."></textarea>
+            </div>
+        </div>
+        
+        <!-- Координация -->
+        <div class="card cat-coordination">
+            <div class="card-title">🎯 Координация</div>
+            <div class="form-group">
+                <label class="form-label">Скакалка 100 раз (секунды)</label>
+                <div class="test-row">
+                    <input type="number" class="form-input" id="coordination_rope" placeholder="Время">
+                    <button type="button" class="x-btn" onclick="toggleFail('coordination_rope')">✕</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Общая оценка</label>
+                <div class="rating-scale" data-key="coordination_score">
+                    ${[1,2,3,4,5].map(n => `<button type="button" class="rating-btn" data-value="${n}" onclick="setRating('coordination_score',${n})">${n}</button>`).join('')}
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Заметки</label>
+                <textarea class="form-textarea" id="coordination_notes" rows="2" placeholder="Проблемы с балансом..."></textarea>
+            </div>
+        </div>
+        
+        <!-- Сила -->
+        <div class="card cat-strength">
+            <div class="card-title">💪 Сила</div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label">Подтягивания</label>
+                    <div class="test-row">
+                        <input type="number" class="form-input" id="strength_pullups" placeholder="макс">
+                        <button type="button" class="x-btn" onclick="toggleFail('strength_pullups')">✕</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Отжимания</label>
+                    <div class="test-row">
+                        <input type="number" class="form-input" id="strength_pushups" placeholder="макс">
+                        <button type="button" class="x-btn" onclick="toggleFail('strength_pushups')">✕</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ноги к перекл.</label>
+                    <div class="test-row">
+                        <input type="number" class="form-input" id="strength_leg_raise" placeholder="макс">
+                        <button type="button" class="x-btn" onclick="toggleFail('strength_leg_raise')">✕</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Тумба (см)</label>
+                    <div class="test-row">
+                        <input type="number" class="form-input" id="strength_box_jump" placeholder="высота">
+                        <button type="button" class="x-btn" onclick="toggleFail('strength_box_jump')">✕</button>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0; margin-top:8px">
+                <label class="form-label">Комментарии</label>
+                <textarea class="form-textarea" id="strength_notes" rows="2" placeholder="Слабые звенья..."></textarea>
+            </div>
+        </div>
+        
+        <!-- Техника -->
+        <div class="card cat-technique">
+            <div class="card-title">🎬 Техника движений</div>
+            
+            ${TECHNIQUE_EXERCISES.map(ex => `
+                <div class="technique-item">
+                    <div class="technique-header">
+                        <span class="technique-name">${ex.name}</span>
+                        <input type="number" class="technique-weight" id="tech_${ex.id}_weight" placeholder="кг">
+                    </div>
+                    <div class="rating-scale" data-key="tech_${ex.id}">
+                        ${[1,2,3,4,5].map(n => `<button type="button" class="rating-btn" data-value="${n}" onclick="setRating('tech_${ex.id}',${n})">${n}</button>`).join('')}
+                    </div>
+                </div>
+            `).join('')}
+            
+            <div class="form-group" style="margin-bottom:0; margin-top:8px">
+                <label class="form-label">Комментарии по технике</label>
+                <textarea class="form-textarea" id="technique_notes" rows="2" placeholder="Проблемы с техникой..."></textarea>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('mainContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KBJU (показываем из Nutrition, пересчёт при изменении веса)
+// ═══════════════════════════════════════════════════════════════
+
+function recalcKBJU() {
+    const n = clientData.nutrition;
+    const newWeight = parseFloat(document.getElementById('inbody_weight').value);
+    const newBMR = parseFloat(document.getElementById('inbody_bmr').value);
+    
+    if (!newWeight && !newBMR) return;
+    
+    // Берём коэффициенты из Nutrition
+    const activityMult = parseFloat(n.activity_multiplier) || 1.55;
+    const deficitPct = parseFloat(n.deficit_percent) || 15;
+    const proteinPerKg = parseFloat(n.protein_per_kg) || 1.8;
+    const fatPerKg = parseFloat(n.fat_per_kg) || 1.0;
+    
+    const weight = newWeight || parseFloat(n.weight) || 70;
+    const bmr = newBMR || parseFloat(n.BMR_final) || parseFloat(n.BMR) || 1500;
+    
+    const tdee = Math.round(bmr * activityMult);
+    const calories = Math.round(tdee * (1 - deficitPct / 100));
+    const protein = Math.round(weight * proteinPerKg);
+    const fat = Math.round(weight * fatPerKg);
+    const carbs = Math.max(50, Math.round((calories - protein * 4 - fat * 9) / 4));
+    
+    document.getElementById('kbju_cal').textContent = calories;
+    document.getElementById('kbju_p').textContent = protein;
+    document.getElementById('kbju_f').textContent = fat;
+    document.getElementById('kbju_c').textContent = carbs;
+    
+    calculatedKBJU = { calories, protein, fat, carbs, bmr };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function calcAge(birthDate) {
+    if (!birthDate) return null;
+    const birth = new Date(birthDate);
+    if (isNaN(birth)) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+}
+
+function getBmiClass(bmi) {
+    const val = parseFloat(bmi);
+    if (isNaN(val)) return '';
+    if (val < 18.5) return 'warning';
+    if (val < 25) return 'success';
+    if (val < 30) return 'warning';
+    return 'danger';
+}
+
+function collectHealthIssues(g, p) {
+    const issues = [];
+    if (g.health_heart === true || g.health_heart === 'true' || g.health_heart === 'Да') issues.push('Сердце/давление');
+    if (p.health_injuries) issues.push(p.health_injuries);
+    else if (g.health_injuries_desc) issues.push(g.health_injuries_desc);
+    if (p.health_chronic) issues.push(p.health_chronic);
+    else if (g.health_chronic_desc) issues.push(g.health_chronic_desc);
+    if (p.health_restrictions) issues.push(p.health_restrictions);
+    else if (g.health_restrictions) issues.push(g.health_restrictions);
+    if (g.health_medications_desc) issues.push('Лекарства: ' + g.health_medications_desc);
+    return issues.filter(i => i).join('; ') || null;
+}
+
+function setRating(key, value) {
+    const container = document.querySelector(`.rating-scale[data-key="${key}"]`);
+    if (container) {
+        container.querySelectorAll('.rating-btn').forEach(btn => 
+            btn.classList.toggle('active', +btn.dataset.value === value));
+    }
+    assessmentData[key] = value;
+}
+
+function toggleFail(inputId) {
+    const input = document.getElementById(inputId);
+    const btn = input.parentElement.querySelector('.x-btn');
+    if (btn.classList.contains('active')) {
+        btn.classList.remove('active');
+        input.disabled = false;
+        input.value = '';
+        delete assessmentData[inputId + '_fail'];
+    } else {
+        btn.classList.add('active');
+        input.disabled = true;
+        input.value = '';
+        assessmentData[inputId + '_fail'] = true;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════════════════════════
+
+async function saveAssessment() {
+    if (!currentClient) return showToast('Выберите клиента', 'error');
+    
+    const date = document.getElementById('assessDate').value;
+    if (!date) return showToast('Выберите дату', 'error');
+    
+    // Собираем все данные
+    const data = { ...assessmentData };
+    
+    // Текстовые поля
+    ['notes_general', 'mobility_notes', 'coordination_notes', 'strength_notes', 'technique_notes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value.trim()) data[id] = el.value.trim();
+    });
+    
+    // InBody
+    ['inbody_weight', 'inbody_fat', 'inbody_muscle', 'inbody_bmr'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value) data[id] = parseFloat(el.value);
+    });
+    
+    // Силовые тесты
+    ['coordination_rope', 'strength_pullups', 'strength_pushups', 'strength_leg_raise', 'strength_box_jump'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value && !el.disabled) {
+            data[id] = parseFloat(el.value);
+        } else if (assessmentData[id + '_fail']) {
+            data[id] = 'X';
+        }
+    });
+    
+    // Техника + вес
+    TECHNIQUE_EXERCISES.forEach(ex => {
+        const key = 'tech_' + ex.id;
+        const weightEl = document.getElementById(key + '_weight');
+        if (weightEl && weightEl.value) data[key + '_weight'] = parseFloat(weightEl.value);
+    });
+    
+    // КБЖУ
+    if (calculatedKBJU.calories) {
+        data.kbju_calories = calculatedKBJU.calories;
+        data.kbju_protein = calculatedKBJU.protein;
+        data.kbju_fat = calculatedKBJU.fat;
+        data.kbju_carbs = calculatedKBJU.carbs;
+        data.bmr_final = calculatedKBJU.bmr;
+    }
+    
+    if (Object.keys(data).filter(k => !k.endsWith('_fail')).length === 0) {
+        return showToast('Заполните хотя бы одно поле', 'error');
+    }
+    
+    // Преобразуем для API
+    const assessments = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (!key.endsWith('_fail')) {
+            assessments[key] = {
+                value: value,
+                unit: getUnit(key),
+                category: getCategory(key)
+            };
+        }
+    }
+    
+    showLoading('Сохранение оценки...');
+    
+    try {
+        // 1. Сохраняем Assessment
+        const res = await apiPost('saveAssessment', { 
+            clientId: currentClient.id, 
+            date, 
+            assessments 
+        });
+        
+        if (!res.success) {
+            hideLoading();
+            return showToast('Ошибка: ' + (res.error || '?'), 'error');
+        }
+        
+        // 2. Обновляем ClientProfile (вес, жир, мышцы)
+        if (data.inbody_weight || data.inbody_fat || data.inbody_muscle) {
+            const profileUpdates = {};
+            if (data.inbody_weight) profileUpdates.weight = data.inbody_weight;
+            if (data.inbody_fat) profileUpdates.body_fat = data.inbody_fat;
+            if (data.inbody_muscle) profileUpdates.muscle_mass = data.inbody_muscle;
+            
+            await apiPost('updateClientProfile', {
+                clientId: currentClient.id,
+                updates: profileUpdates
+            });
+        }
+        
+        // 3. Обновляем Nutrition (inbody_bmr)
+        if (data.inbody_bmr) {
+            await apiPost('updateNutrition', {
+                clientId: currentClient.id,
+                key: 'inbody_bmr',
+                value: data.inbody_bmr
+            });
+        }
+        
+        // 4. Сохраняем силовые тесты в WorkoutLog как тренировку
+        await saveWorkoutFromAssessment(date, data);
+        
+        hideLoading();
+        
+        // Сохраняем для summary
+        savedAssessmentData = data;
+        
+        // Показываем саммари
+        showSummary(data, date);
+        
+    } catch (e) {
+        hideLoading();
+        showToast('Ошибка: ' + e.message, 'error');
+    }
+}
+
+/**
+ * Сохранение силовых тестов в WorkoutLog
+ */
+async function saveWorkoutFromAssessment(date, data) {
+    // Создаём сессию типа "assessment"
+    const sessionId = 'assessment_' + date;
+    
+    try {
+        // Собираем упражнения техники с весами
+        const exercises = [];
+        let order = 1;
+        
+        TECHNIQUE_EXERCISES.forEach(ex => {
+            const scoreKey = 'tech_' + ex.id;
+            const weightKey = scoreKey + '_weight';
+            
+            if (data[scoreKey] || data[weightKey]) {
+                exercises.push({
+                    sessionId: sessionId,
+                    order: order++,
+                    exerciseId: ex.id,
+                    exerciseName: ex.name,
+                    category: 'assessment',
+                    setNumber: 1,
+                    setType: 'work',
+                    weight: data[weightKey] || 0,
+                    reps: ex.defaultReps,
+                    technique_score: data[scoreKey] || null,
+                    notes: `Оценка техники: ${data[scoreKey] || '—'}/5`
+                });
+            }
+        });
+        
+        if (exercises.length > 0) {
+            // Создаём WorkoutSession
+            await apiPost('startSession', {
+                clientId: currentClient.id,
+                date: date,
+                type: 'assessment',
+                notes: 'Вводная оценка'
+            });
+            
+            // Добавляем упражнения
+            for (const ex of exercises) {
+                await apiPost('addSet', {
+                    clientId: currentClient.id,
+                    ...ex
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Error saving workout:', e);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUMMARY MODAL
+// ═══════════════════════════════════════════════════════════════
+
+function showSummary(data, date) {
+    const g = clientData.goals;
+    const weight = data.inbody_weight || parseFloat(g.start_weight) || 0;
+    const targetWeight = parseFloat(g.target_weight) || 0;
+    const isPending = currentClient.status === 'pending_assessment';
+    
+    let html = `
+        <div class="modal" id="summaryModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">📊 Результаты оценки</div>
+                    <button class="modal-close" onclick="closeSummary(false)">×</button>
+                </div>
+                <div class="modal-body">
+                    
+                    <div class="summary-section">
+                        <div class="summary-title">📏 Состав тела</div>
+                        ${data.inbody_weight ? `<div class="summary-row"><span class="summary-label">Вес</span><span class="summary-value">${data.inbody_weight} кг</span></div>` : ''}
+                        ${data.inbody_fat ? `<div class="summary-row"><span class="summary-label">Жир</span><span class="summary-value ${data.inbody_fat > 25 ? 'warn' : 'good'}">${data.inbody_fat}%</span></div>` : ''}
+                        ${data.inbody_muscle ? `<div class="summary-row"><span class="summary-label">Мышцы</span><span class="summary-value">${data.inbody_muscle} кг</span></div>` : ''}
+                        ${targetWeight && weight ? `<div class="summary-row"><span class="summary-label">До цели</span><span class="summary-value ${weight > targetWeight ? 'warn' : 'good'}">${Math.abs(weight - targetWeight).toFixed(1)} кг</span></div>` : ''}
+                    </div>
+                    
+                    <div class="summary-section">
+                        <div class="summary-title">🎯 КБЖУ</div>
+                        <div class="summary-row"><span class="summary-label">Калории</span><span class="summary-value">${calculatedKBJU.calories || '—'} ккал</span></div>
+                        <div class="summary-row"><span class="summary-label">БЖУ</span><span class="summary-value">${calculatedKBJU.protein || '—'} / ${calculatedKBJU.fat || '—'} / ${calculatedKBJU.carbs || '—'}</span></div>
+                    </div>
+                    
+                    <div class="summary-section">
+                        <div class="summary-title">🏋️ Тесты</div>
+                        ${data.mobility_score ? `<div class="summary-row"><span class="summary-label">Подвижность</span><span class="summary-value ${getRatingClass(data.mobility_score)}">${data.mobility_score}/5</span></div>` : ''}
+                        ${data.coordination_score ? `<div class="summary-row"><span class="summary-label">Координация</span><span class="summary-value ${getRatingClass(data.coordination_score)}">${data.coordination_score}/5</span></div>` : ''}
+                        ${data.strength_pullups !== undefined ? `<div class="summary-row"><span class="summary-label">Подтягивания</span><span class="summary-value">${data.strength_pullups === 'X' ? '✕' : data.strength_pullups}</span></div>` : ''}
+                        ${data.strength_pushups !== undefined ? `<div class="summary-row"><span class="summary-label">Отжимания</span><span class="summary-value">${data.strength_pushups === 'X' ? '✕' : data.strength_pushups}</span></div>` : ''}
+                    </div>
+                    
+                    <div class="summary-section">
+                        <div class="summary-title">🎬 Техника</div>
+                        ${TECHNIQUE_EXERCISES.map(ex => {
+                            const score = data['tech_' + ex.id];
+                            const weight = data['tech_' + ex.id + '_weight'];
+                            if (!score && !weight) return '';
+                            return `<div class="summary-row">
+                                <span class="summary-label">${ex.name}</span>
+                                <span class="summary-value ${getRatingClass(score)}">${score || '—'}/5 ${weight ? '@ ' + weight + 'кг' : ''}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    
+                    ${isPending ? `
+                    <div class="block-form">
+                        <div class="block-form-title">📦 Новый тренировочный блок</div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Количество тренировок</label>
+                                <input type="number" class="form-input" id="block_sessions" value="8" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Стоимость ($)</label>
+                                <input type="number" class="form-input" id="block_price" placeholder="200">
+                            </div>
+                        </div>
+                        <div class="alert alert-info" style="margin-top:8px; font-size:0.8em;">
+                            После создания блока статус клиента станет "активный"
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                </div>
+                <div class="modal-footer">
+                    ${isPending ? `
+                        <button class="btn btn-secondary" onclick="closeSummary(false)">Позже</button>
+                        <button class="btn btn-success" onclick="createBlockAndActivate()">
+                            ✓ Создать блок
+                        </button>
+                    ` : `
+                        <button class="btn btn-primary" onclick="closeSummary(true)">
+                            ✓ Готово
+                        </button>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function getRatingClass(val) {
+    if (!val) return '';
+    if (val >= 4) return 'good';
+    if (val >= 3) return 'warn';
+    return 'bad';
+}
+
+function closeSummary(reload = false) {
+    document.getElementById('summaryModal')?.remove();
+    if (reload) {
+        location.reload();
+    }
+}
+
+async function createBlockAndActivate() {
+    const sessions = parseInt(document.getElementById('block_sessions').value) || 8;
+    const price = parseFloat(document.getElementById('block_price').value) || 0;
+    const date = document.getElementById('assessDate').value;
+    
+    if (sessions < 1) {
+        return showToast('Укажите количество тренировок', 'error');
+    }
+    
+    showLoading('Создание блока...');
+    
+    try {
+        // 1. Создаём блок (assessment считается первой тренировкой)
+        const blockRes = await apiPost('createTrainingBlock', {
+            clientId: currentClient.id,
+            totalSessions: sessions,
+            usedSessions: 1, // assessment = первая тренировка
+            startDate: date,
+            priceUSD: price,
+            notes: 'Создан при вводной оценке'
+        });
+        
+        if (blockRes.success && blockRes.blockId) {
+            // 2. Привязываем assessment сессию к блоку
+            await apiPost('updateSession', {
+                clientId: currentClient.id,
+                sessionId: 'assessment_' + date,
+                blockId: blockRes.blockId
+            });
+        }
+        
+        // 3. Обновляем статус клиента на active
+        await apiPost('updateClientStatus', {
+            clientId: currentClient.id,
+            status: 'active'
+        });
+        
+        hideLoading();
+        
+        // Обновляем локальный статус
+        currentClient.status = 'active';
+        const opt = document.querySelector(`#clientSelector option[value="${currentClient.id}"]`);
+        if (opt) opt.textContent = currentClient.name;
+        
+        showToast('✅ Блок создан, клиент активирован!', 'success');
+        
+        closeSummary(true);
+        
+    } catch (e) {
+        hideLoading();
+        showToast('Ошибка: ' + e.message, 'error');
+    }
+}
+
+function getUnit(key) {
+    if (key.includes('weight') && !key.includes('kbju')) return 'кг';
+    if (key.includes('fat')) return '%';
+    if (key.includes('muscle')) return 'кг';
+    if (key.includes('rope')) return 'сек';
+    if (key.includes('box_jump')) return 'см';
+    if (key.includes('bmr') || key.includes('calories')) return 'ккал';
+    if (key.includes('score') || key.startsWith('tech_')) return '1-5';
+    return '';
+}
+
+function getCategory(key) {
+    if (key.startsWith('inbody_') || key.startsWith('kbju_') || key === 'bmr_final') return 'body';
+    if (key.startsWith('mobility_')) return 'mobility';
+    if (key.startsWith('coordination_')) return 'coordination';
+    if (key.startsWith('strength_')) return 'strength';
+    if (key.startsWith('tech_')) return 'technique';
+    return 'general';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════════════
+
+function showLoading(t) { 
+    document.getElementById('loadingText').textContent = t; 
+    document.getElementById('loading').style.display = 'flex'; 
+}
+
+function hideLoading() { 
+    document.getElementById('loading').style.display = 'none'; 
+}
+
+function showToast(m, t = 'info') {
+    document.querySelector('.toast')?.remove();
+    const el = document.createElement('div');
+    el.className = `toast ${t}`;
+    el.textContent = m;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+</script>
+</body>
+</html>

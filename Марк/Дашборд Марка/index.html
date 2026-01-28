@@ -1,0 +1,2553 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💪 FITNESS DASHBOARD 💪</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --card-border: #2a2a2a;
+            --primary-red: #ff3333;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --success-green: #00ff88;
+            --warning-yellow: #ffbb00;
+            --gradient-red: linear-gradient(135deg, #ff3333 0%, #ff6b6b 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: var(--gradient-red);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .last-update {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .settings-btn {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .settings-btn:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: var(--primary-red);
+        }
+
+        .client-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 100px 20px;
+        }
+
+        .spinner {
+            border: 4px solid var(--card-border);
+            border-top: 4px solid var(--primary-red);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Grid Layouts */
+        .goals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Card Base */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(255, 51, 51, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .collapsible-header {
+            padding: 15px 20px;
+            margin: -20px -20px 0 -20px;
+            border-radius: 20px 20px 0 0;
+            transition: background 0.2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+        }
+        
+        .collapsible-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .collapsible-header:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .card-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+        }
+
+        .card-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--card-border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-red);
+            transition: width 1s ease-out;
+            border-radius: 4px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .status-success {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--success-green);
+        }
+
+        .status-warning {
+            background: rgba(255, 187, 0, 0.15);
+            color: var(--warning-yellow);
+        }
+
+        .status-danger {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--primary-red);
+        }
+
+        /* Nutrition Card */
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .nutrition-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .nutrition-item-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .nutrition-item-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* Weight Progress */
+        .weight-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .weight-stat {
+            flex: 1;
+        }
+
+        .weight-stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .weight-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Sleep Card */
+        .sleep-score {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 16px 0;
+        }
+
+        .sleep-rating {
+            font-size: 1.2rem;
+            color: var(--success-green);
+            font-weight: 600;
+        }
+
+        /* Weekly Stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* Quote Card */
+        .quote-card {
+            text-align: center;
+            padding: 40px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quote-card::before {
+            content: '"';
+            position: absolute;
+            top: -20px;
+            left: 20px;
+            font-size: 120px;
+            color: rgba(255, 51, 51, 0.1);
+            font-family: Georgia, serif;
+        }
+
+        .quote-text {
+            font-size: 1.5rem;
+            line-height: 1.6;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .quote-category {
+            color: var(--primary-red);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+
+            .header {
+                gap: 12px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .goals-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card-value {
+                font-size: 2rem;
+            }
+
+            .quote-text {
+                font-size: 1.2rem;
+            }
+
+            .nutrition-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .weight-stats {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .collapsible-header {
+                padding: 18px 20px;
+                min-height: 48px;
+            }
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(255, 51, 51, 0.1);
+            border: 1px solid var(--primary-red);
+            color: var(--primary-red);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* URL Setup Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid var(--primary-red);
+        }
+
+        .modal-title {
+            color: var(--primary-red);
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary-red);
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            background: var(--gradient-red);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .modal-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .modal-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 id="dashboardTitle">💪 FITNESS DASHBOARD 💪</h1>
+            <div class="header-info">
+                <span class="client-badge" id="clientBadge"></span>
+                <span class="last-update" id="lastUpdate"></span>
+                <button class="settings-btn" onclick="openSettings()" title="Настройки">⚙️</button>
+            </div>
+        </div>
+
+        <!-- Pull to Refresh Indicator -->
+        <div id="pullToRefresh" style="position: fixed; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(135deg, #e74c3c, #c0392b); justify-content: center; align-items: center; z-index: 9999; transform: translateY(-100%); transition: transform 0.3s ease; display: none;">
+            <span style="color: #fff; font-size: 14px; font-weight: 600;">↓ Потяните для обновления</span>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Загружаем данные из Google Sheets...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorContainer" style="display: none;"></div>
+
+        <!-- Main Content -->
+        <div id="content" style="display: none;">
+            <!-- Goals Grid -->
+            <div class="goals-grid" id="goalsGrid"></div>
+
+            <!-- Main Grid: Nutrition -->
+            <div class="main-grid" style="grid-template-columns: 1fr;">
+                <div class="card" id="nutritionCard" style="padding: 20px;"></div>
+            </div>
+
+            <!-- Stats Grid: Weekly Stats + Weight Chart -->
+            <div class="stats-grid">
+                <div class="card" id="weeklyStatsCard"></div>
+                <div class="card" style="padding: 15px;" id="weightChartCard">
+                    <div class="card-header" style="margin-bottom: 10px;">
+                        <span class="card-icon" style="font-size: 1.2rem;">📈</span>
+                        <span class="card-title" style="font-size: 0.75rem;">ДИНАМИКА ВЕСА</span>
+                    </div>
+                    <canvas id="weightChart" style="width: 100%; height: 120px;"></canvas>
+                    <div id="weightChartStats" style="margin-top: 8px; display: flex; justify-content: space-around; font-size: 11px; color: var(--text-secondary);"></div>
+                </div>
+            </div>
+            
+            <!-- Tonnage Chart -->
+            <div class="card" style="padding: 15px;" id="tonnageChartCard">
+                <div class="card-header" style="margin-bottom: 10px;">
+                    <span class="card-icon" style="font-size: 1.2rem;">💪</span>
+                    <span class="card-title" style="font-size: 0.75rem;">ИНТЕНСИВНОСТЬ ТРЕНИРОВОК</span>
+                </div>
+                <canvas id="tonnageChart" style="width: 100%; height: 150px;"></canvas>
+                <div id="tonnageChartStats" style="margin-top: 8px; display: flex; justify-content: space-around; font-size: 11px; color: var(--text-secondary);"></div>
+            </div>
+
+            <!-- Week Comparison -->
+            <div class="card" style="padding: 20px;" id="weekComparisonCard">
+                <div class="card-header" style="margin-bottom: 15px;">
+                    <span class="card-icon">⚖️</span>
+                    <span class="card-title">СРАВНЕНИЕ НЕДЕЛЬ</span>
+                </div>
+                <div id="weekComparisonContent"></div>
+            </div>
+
+            <!-- 90-Day Tracker (Collapsible) -->
+            <div class="card" style="padding: 20px;">
+                <div class="card-header collapsible-header" onclick="toggleTracker()" style="margin-bottom: 0;">
+                    <span class="card-icon">📅</span>
+                    <span class="card-title">ТРЕКЕР</span>
+                    <span id="trackerArrow" style="margin-left: auto; font-size: 18px; transition: transform 0.3s;">▼</span>
+                </div>
+                <div id="trackerContent" style="display: none; margin-top: 20px;">
+                    <div id="nutritionTracker"></div>
+                    <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary);">
+                        <div><span style="font-size: 20px;">🔥</span> Идеально</div>
+                        <div><span style="font-size: 20px;">✅</span> Норма</div>
+                        <div><span style="font-size: 20px;">❌</span> Срыв</div>
+                        <div><span style="font-size: 20px;">⚪</span> Нет данных</div>
+                        <div><span style="color: #ff3333; font-size: 16px;">●</span> Тренировка</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Day Detail Popup -->
+            <div id="dayPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--card-bg); border: 2px solid var(--primary-red); border-radius: 16px; padding: 20px; z-index: 10000; width: calc(100vw - 40px); max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                <div id="dayPopupContent"></div>
+                <button onclick="closeDayPopup()" style="width: 100%; margin-top: 16px; padding: 12px; background: var(--card-border); border: none; border-radius: 8px; color: var(--text-primary); font-weight: 600; cursor: pointer;">Закрыть</button>
+            </div>
+            <div id="dayPopupOverlay" onclick="closeDayPopup()" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999;"></div>
+
+            <!-- Quote -->
+            <div class="card quote-card" id="quoteCard"></div>
+        </div>
+    </div>
+
+    <!-- URL Setup Modal -->
+    <div id="urlSetupModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="modal-title">⚙️ Настройка Dashboard</h2>
+            <p class="modal-subtitle">Введите URL Master API и ID клиента</p>
+            <input type="text" id="urlInput" class="modal-input" placeholder="https://script.google.com/macros/s/...">
+            <input type="text" id="clientIdInput" class="modal-input" placeholder="ID клиента (например: 1)">
+            <button onclick="saveConfig()" class="modal-btn">💾 СОХРАНИТЬ</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="modal-title" style="margin: 0;">⚙️ Настройки</h2>
+                <button onclick="closeSettings()" style="background: transparent; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); padding: 4px 8px;">×</button>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">API URL</label>
+                <input type="text" id="settingsApiUrl" class="modal-input" style="margin-bottom: 0;" placeholder="https://script.google.com/macros/s/...">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px;">ID клиента</label>
+                <input type="text" id="settingsClientId" class="modal-input" style="margin-bottom: 0;" placeholder="1">
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closeSettings()" style="flex: 1; padding: 14px; font-size: 1rem; background: transparent; border: 1px solid var(--card-border); border-radius: 10px; color: var(--text-secondary); cursor: pointer;">Отмена</button>
+                <button onclick="saveSettings()" class="modal-btn" style="flex: 2; margin: 0;">💾 Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // КОНФИГУРАЦИЯ - MASTER API
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Получаем clientId из URL параметра или localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let CLIENT_ID = urlParams.get('client') || localStorage.getItem('dashboardClientId') || '';
+        let API_URL = localStorage.getItem('dashboardMasterApiUrl') || '';
+        
+        // Coach Master API (стабильный URL для всех клиентов)
+        const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbyZRS_Tn4drwFyL_Zh3-mIzVa_-S1VB0GDf1P-p4XF01Dv3DA5wTVSqdZx70vcf_oad/exec';
+        const DEFAULT_CLIENT_ID = '1'; // Марк
+        
+        if (!API_URL) {
+            API_URL = DEFAULT_API;
+            localStorage.setItem('dashboardMasterApiUrl', API_URL);
+        }
+        if (!CLIENT_ID) {
+            CLIENT_ID = DEFAULT_CLIENT_ID;
+            localStorage.setItem('dashboardClientId', CLIENT_ID);
+        }
+
+        // Data Storage
+        let goalsData = null;
+        let nutritionData = null;
+        let quotesData = null;
+        let settingsData = null;
+        let dailyData = null;
+        let actualNutritionData = null;
+        let clientInfo = null;
+
+        // ═══════════════════════════════════════════════════════════════
+        // ИНИЦИАЛИЗАЦИЯ
+        // ═══════════════════════════════════════════════════════════════
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Для индивидуального трекера CLIENT_ID не обязателен
+            if (!API_URL) {
+                showUrlSetup();
+            } else {
+                loadAllData();
+            }
+            
+            initPullToRefresh();
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // НАСТРОЙКА URL
+        // ═══════════════════════════════════════════════════════════════
+
+        function showUrlSetup() {
+            document.getElementById('urlSetupModal').style.display = 'flex';
+            document.getElementById('urlInput').value = API_URL;
+            document.getElementById('clientIdInput').value = CLIENT_ID;
+        }
+
+        function saveConfig() {
+            const url = document.getElementById('urlInput').value.trim();
+            const clientId = document.getElementById('clientIdInput').value.trim();
+            
+            if (!url) {
+                alert('Введите URL Master API!');
+                return;
+            }
+            if (!clientId) {
+                alert('Введите ID клиента!');
+                return;
+            }
+            
+            localStorage.setItem('dashboardMasterApiUrl', url);
+            localStorage.setItem('dashboardClientId', clientId);
+            API_URL = url;
+            CLIENT_ID = clientId;
+            
+            document.getElementById('urlSetupModal').style.display = 'none';
+            loadAllData();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // НАСТРОЙКИ (Settings Modal)
+        // ═══════════════════════════════════════════════════════════════
+
+        function openSettings() {
+            document.getElementById('settingsApiUrl').value = API_URL;
+            document.getElementById('settingsClientId').value = CLIENT_ID;
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('settingsApiUrl').value.trim();
+            const clientId = document.getElementById('settingsClientId').value.trim();
+            
+            if (!url || !clientId) {
+                alert('Введите URL и ID клиента!');
+                return;
+            }
+            
+            localStorage.setItem('dashboardMasterApiUrl', url);
+            localStorage.setItem('dashboardClientId', clientId);
+            API_URL = url;
+            CLIENT_ID = clientId;
+            closeSettings();
+            loadAllData();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // PULL-TO-REFRESH
+        // ═══════════════════════════════════════════════════════════════
+
+        function initPullToRefresh() {
+            const pullIndicator = document.getElementById('pullToRefresh');
+            let startY = 0;
+            let currentY = 0;
+            let pulling = false;
+            let refreshing = false;
+            const threshold = 80;
+            
+            document.addEventListener('touchstart', (e) => {
+                if (window.scrollY === 0 && !refreshing) {
+                    startY = e.touches[0].pageY;
+                    pulling = true;
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!pulling || refreshing) return;
+                
+                currentY = e.touches[0].pageY;
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 0 && window.scrollY === 0) {
+                    const progress = Math.min(pullDistance / threshold, 1);
+                    pullIndicator.style.display = 'flex';
+                    pullIndicator.style.transform = `translateY(${-100 + (progress * 100)}%)`;
+                    
+                    if (pullDistance > threshold) {
+                        pullIndicator.innerHTML = '<span style="color: #fff; font-size: 14px; font-weight: 600;">↑ Отпустите для обновления</span>';
+                    } else {
+                        pullIndicator.innerHTML = '<span style="color: #fff; font-size: 14px; font-weight: 600;">↓ Потяните для обновления</span>';
+                    }
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchend', async () => {
+                if (!pulling || refreshing) return;
+                
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > threshold && window.scrollY === 0) {
+                    refreshing = true;
+                    pullIndicator.innerHTML = '<span style="color: #fff; font-size: 14px; font-weight: 600;">🔄 Обновление...</span>';
+                    pullIndicator.style.transform = 'translateY(0)';
+                    
+                    await loadAllData();
+                    
+                    setTimeout(() => {
+                        pullIndicator.style.transform = 'translateY(-100%)';
+                        setTimeout(() => {
+                            pullIndicator.style.display = 'none';
+                            refreshing = false;
+                        }, 300);
+                    }, 500);
+                } else {
+                    pullIndicator.style.transform = 'translateY(-100%)';
+                    setTimeout(() => {
+                        pullIndicator.style.display = 'none';
+                    }, 300);
+                }
+                
+                pulling = false;
+                startY = 0;
+                currentY = 0;
+            }, { passive: true });
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // ЗАГРУЗКА ДАННЫХ - MASTER API
+        // ═══════════════════════════════════════════════════════════════
+
+        async function loadAllData() {
+            try {
+                console.log('Loading data from Master API:', API_URL);
+                console.log('Client ID:', CLIENT_ID);
+                showLoading();
+                hideError();
+
+                // Загружаем все данные через Master API с clientId
+                const [goals, nutrition, quotes, settings, daily, workouts, actualNutrition, clients] = await Promise.all([
+                    fetchData('getGoals'),
+                    fetchData('getNutrition'),
+                    fetchData('getQuotes'),
+                    fetchData('getSettings'),
+                    fetchData('getDaily'),
+                    fetchData('getWorkouts'),
+                    fetchData('getActualNutrition'),
+                    fetchData('getClients', false) // без clientId
+                ]);
+
+                // Найти информацию о текущем клиенте
+                if (clients.clients) {
+                    clientInfo = clients.clients.find(c => String(c.id) === String(CLIENT_ID));
+                }
+
+                goalsData = goals;
+                nutritionData = nutrition;
+                quotesData = quotes;
+                settingsData = settings;
+                dailyData = daily.dailyData || {};
+                window.workoutHistoryData = workouts.workoutHistory || [];
+                actualNutritionData = actualNutrition.success ? actualNutrition.data : null;
+                
+                // Debug logging
+                console.log('=== DATA LOADED ===');
+                console.log('Goals:', goalsData);
+                console.log('Nutrition:', nutritionData);
+                console.log('Daily data keys:', Object.keys(dailyData).length);
+                console.log('Workouts:', window.workoutHistoryData.length);
+                console.log('Actual Nutrition:', actualNutritionData);
+                console.log('Client Info:', clientInfo);
+                console.log('==================');
+
+                try {
+                    renderDashboard();
+                } catch (renderError) {
+                    console.error('Error rendering dashboard:', renderError);
+                    showError('Ошибка отображения данных. Проверьте формат данных в таблице.');
+                }
+                
+                updateLastUpdate();
+                hideLoading();
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                showError('Ошибка загрузки данных. Проверьте подключение к интернету и настройки API.');
+                hideLoading();
+            }
+        }
+
+        /**
+         * Fetch данных с Master API
+         * @param {string} action - название действия
+         * @param {boolean} withClientId - добавлять ли clientId (по умолчанию true)
+         */
+        async function fetchData(action, withClientId = true) {
+            let url = `${API_URL}?action=${action}&t=${Date.now()}`;
+            
+            // Добавляем clientId для запросов к данным клиента
+            if (withClientId && CLIENT_ID) {
+                url += `&clientId=${CLIENT_ID}`;
+            }
+            
+            console.log('Fetching:', url);
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // РЕНДЕРИНГ DASHBOARD
+        // ═══════════════════════════════════════════════════════════════
+
+        function renderDashboard() {
+            updateDashboardTitle();
+            renderGoalsCards();
+            renderNutritionCard();
+            renderWeeklyStatsCard();
+            renderNutritionTracker();
+            renderWeightChart();
+            renderTonnageChart();
+            renderWeekComparison();
+            renderQuoteCard();
+        }
+
+        function updateDashboardTitle() {
+            // Показать имя клиента
+            const clientName = goalsData?.client_name || clientInfo?.name || 'Клиент';
+            document.getElementById('dashboardTitle').textContent = `💪 ${clientName.toUpperCase()} 💪`;
+            
+            // Бейдж с типом клиента
+            const clientType = clientInfo?.clientType || 'online';
+            const typeNames = {
+                'online': '🌐 Онлайн',
+                'offline': '🏋️ Офлайн',
+                'hybrid': '🔄 Комбо',
+                'weightLoss': '📉 Похудение',
+                'muscleGain': '💪 Набор массы',
+                'maintenance': '⚖️ Поддержание'
+            };
+            document.getElementById('clientBadge').textContent = typeNames[clientType] || clientType;
+        }
+
+        function renderGoalsCards() {
+            const container = document.getElementById('goalsGrid');
+            
+            // Get latest data
+            let latestWeight = parseFloat(goalsData?.current_weight || goalsData?.start_weight || 100);
+            let latestPullups = parseInt(goalsData?.current_pullups || 0);
+            let latestBench = parseFloat(goalsData?.current_bench_press || goalsData?.current_bench || 55);
+            
+            // Получить последние значения из Daily (вес, жим, подтягивания)
+            if (dailyData && Object.keys(dailyData).length > 0) {
+                try {
+                    // Функция парсинга даты (поддержка DD.MM.YYYY и YYYY-MM-DD)
+                    function parseAnyDate(dateStr) {
+                        const str = String(dateStr);
+                        if (str.includes('.')) {
+                            const parts = str.split('.');
+                            if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]);
+                        } else if (str.includes('-')) {
+                            const parts = str.split('-');
+                            if (parts.length === 3) return new Date(parts[0], parts[1]-1, parts[2]);
+                        }
+                        return new Date(str);
+                    }
+                    
+                    const sortedDates = Object.keys(dailyData).sort((a, b) => {
+                        const dateA = parseAnyDate(a);
+                        const dateB = parseAnyDate(b);
+                        return dateB - dateA; // Новые первыми
+                    });
+                    
+                    let foundWeight = false, foundBench = false, foundPullups = false;
+                    
+                    for (const date of sortedDates) {
+                        const day = dailyData[date];
+                        
+                        // Последний вес
+                        if (!foundWeight && day.weight && day.weight !== '') {
+                            const weight = parseFloat(day.weight);
+                            if (!isNaN(weight) && weight > 0) {
+                                latestWeight = weight;
+                                foundWeight = true;
+                            }
+                        }
+                        
+                        // Последний жим
+                        if (!foundBench && day.bench && day.bench !== '') {
+                            const bench = parseFloat(day.bench);
+                            if (!isNaN(bench) && bench > 0) {
+                                latestBench = bench;
+                                foundBench = true;
+                            }
+                        }
+                        
+                        // Последние подтягивания
+                        if (!foundPullups && day.pullups && day.pullups !== '') {
+                            const pullups = parseInt(day.pullups);
+                            if (!isNaN(pullups) && pullups > 0) {
+                                latestPullups = pullups;
+                                foundPullups = true;
+                            }
+                        }
+                        
+                        // Если всё найдено - выходим
+                        if (foundWeight && foundBench && foundPullups) break;
+                    }
+                } catch (error) {
+                    console.warn('Error parsing dates from Daily:', error);
+                }
+            }
+            
+            // Подсчёт тренировок
+            let currentWorkouts = 0;
+            if (window.workoutHistoryData && window.workoutHistoryData.length > 0) {
+                const uniqueDates = new Set();
+                window.workoutHistoryData.forEach(workout => {
+                    if (workout.date) {
+                        uniqueDates.add(String(workout.date));
+                    }
+                });
+                currentWorkouts = uniqueDates.size;
+            }
+            
+            // Fallback to Daily
+            if (currentWorkouts === 0 && dailyData && Object.keys(dailyData).length > 0) {
+                Object.values(dailyData).forEach(day => {
+                    if (day.trainingDone === 'Да' || day.trainingDone === true) {
+                        currentWorkouts++;
+                    }
+                });
+            }
+            
+            const workoutsGoal = parseInt(goalsData?.workouts_goal || goalsData?.program_goal_workouts || 30);
+            const programDuration = parseInt(goalsData?.program_duration_days || goalsData?.duration_days || 90);
+            const targetWeight = parseFloat(goalsData?.target_weight || goalsData?.program_goal_weight || 90);
+            const startWeight = parseFloat(goalsData?.start_weight || 100);
+            const pullupsGoal = parseInt(goalsData?.pullups_goal || goalsData?.goal_pullups || 5);
+            const benchGoal = goalsData?.bench_goal || goalsData?.goal_bench || 80;
+            const benchGoalNum = parseFloat(String(benchGoal).split('kg')[0] || benchGoal);
+            
+            const goals = [
+                {
+                    icon: '🏋️',
+                    title: 'ТРЕНИРОВКИ',
+                    current: currentWorkouts,
+                    target: workoutsGoal,
+                    unit: '',
+                    subtitle: `Цель: ${workoutsGoal} за ${programDuration} дней`,
+                    reverse: false
+                },
+                {
+                    icon: '⚖️',
+                    title: 'ТЕКУЩИЙ ВЕС',
+                    current: latestWeight,
+                    target: targetWeight,
+                    unit: 'кг',
+                    subtitle: `Цель: ${targetWeight} кг за ${programDuration} дней`,
+                    reverse: true,
+                    start: startWeight
+                },
+                {
+                    icon: '💪',
+                    title: 'ПОДТЯГИВАНИЯ',
+                    current: latestPullups,
+                    target: pullupsGoal,
+                    unit: 'раз',
+                    subtitle: `Цель: ${pullupsGoal} раз`,
+                    reverse: false
+                },
+                {
+                    icon: '🔥',
+                    title: 'ЖИМ ОТ ГРУДИ',
+                    current: latestBench,
+                    target: benchGoalNum,
+                    unit: 'кг',
+                    subtitle: `Цель: ${benchGoal}кг`,
+                    reverse: false
+                }
+            ];
+
+            container.innerHTML = goals.map(goal => {
+                let progress = 0;
+                let remaining = 0;
+                
+                if (goal.reverse && goal.start) {
+                    const totalToLose = goal.start - goal.target;
+                    const alreadyLost = goal.start - goal.current;
+                    progress = totalToLose > 0 ? Math.min(100, Math.round((alreadyLost / totalToLose) * 100)) : 0;
+                    remaining = goal.current - goal.target;
+                } else {
+                    progress = goal.target > 0 ? Math.min(100, Math.round((goal.current / goal.target) * 100)) : 0;
+                    remaining = goal.target - goal.current;
+                }
+                
+                let statusClass = 'status-danger';
+                let statusText = `Осталось: ${Math.abs(remaining).toFixed(1)} ${goal.unit}`;
+                
+                if (progress >= 100) {
+                    statusClass = 'status-success';
+                    statusText = '✔ Цель достигнута!';
+                } else if (progress >= 70) {
+                    statusClass = 'status-success';
+                } else if (progress >= 40) {
+                    statusClass = 'status-warning';
+                }
+
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">${goal.icon}</span>
+                            <span class="card-title">${goal.title}</span>
+                        </div>
+                        <div class="card-value">${goal.current} ${goal.unit}</div>
+                        <div class="card-subtitle">${goal.subtitle}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="progress-label">
+                            <span>${progress}% выполнено</span>
+                            <span>${goal.target} ${goal.unit}</span>
+                        </div>
+                        <div class="status-badge ${statusClass}">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderNutritionCard() {
+            const container = document.getElementById('nutritionCard');
+            
+            // Целевые значения из Nutrition
+            const targetCalories = Math.round(nutritionData?.targetCalories || 2000);
+            const targetProtein = Math.round(nutritionData?.targetProtein || nutritionData?.protein || 180);
+            const targetFats = Math.round(nutritionData?.targetFats || nutritionData?.fat || 70);
+            const targetCarbs = Math.round(nutritionData?.targetCarbs || nutritionData?.carbs || 180);
+            const tdee = Math.round(nutritionData?.tdee || targetCalories + 500);
+            const deficit = Math.round(nutritionData?.deficit || 500);
+            
+            // Фактические значения из ActualNutrition
+            const actualCalories = actualNutritionData?.calories || null;
+            const actualProtein = actualNutritionData?.protein || null;
+            const actualFats = actualNutritionData?.fats || null;
+            const actualCarbs = actualNutritionData?.carbs || null;
+            
+            // Helper function
+            function createParamBlock(name, target, actual, unit, color) {
+                const diff = actual ? actual - target : 0;
+                const diffText = actual ? (diff >= 0 ? `+${diff}${unit}` : `${diff}${unit}`) : '';
+                const diffColor = diff === 0 ? 'rgba(255, 255, 255, 0.5)' : (diff > 0 ? '#f39c12' : '#2ecc71');
+                
+                const isOverTarget = actual > target;
+                const actualPercent = actual ? (actual / target) * 100 : 0;
+                const excessPercent = isOverTarget ? ((actual - target) / target) * 100 : 0;
+                
+                function darkenColor(hex) {
+                    if (hex.startsWith('#')) {
+                        const r = Math.floor(parseInt(hex.slice(1, 3), 16) * 0.5);
+                        const g = Math.floor(parseInt(hex.slice(3, 5), 16) * 0.5);
+                        const b = Math.floor(parseInt(hex.slice(5, 7), 16) * 0.5);
+                        return `rgb(${r}, ${g}, ${b})`;
+                    }
+                    return hex;
+                }
+                
+                return `
+                    <div style="padding: 10px; background: rgba(255, 255, 255, 0.03); border-radius: 6px; border-left: 3px solid ${color};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">${name}</span>
+                            <div style="text-align: right;">
+                                ${actual ? `
+                                    <div style="font-size: 14px; font-weight: 600;">${actual}${unit}</div>
+                                    <div style="font-size: 10px; color: ${diffColor};">${diffText} от цели</div>
+                                ` : `
+                                    <div style="font-size: 14px; font-weight: 600;">${target}${unit}</div>
+                                    <div style="font-size: 10px; color: rgba(255, 255, 255, 0.4);">цель</div>
+                                `}
+                            </div>
+                        </div>
+                        ${actual ? `
+                            <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; position: relative;">
+                                ${isOverTarget ? `
+                                    <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: ${color}; border-radius: 4px;"></div>
+                                    <div style="position: absolute; left: 0; top: 0; width: ${Math.min(excessPercent, 100)}%; height: 100%; background: ${darkenColor(color)}; border-radius: 4px 0 0 4px;"></div>
+                                ` : `
+                                    <div style="position: absolute; left: 0; top: 0; width: ${Math.min(actualPercent, 100)}%; height: 100%; background: ${color}; border-radius: 4px;"></div>
+                                    <div style="position: absolute; right: 0; top: -1px; width: 2px; height: 10px; background: rgba(255,255,255,0.4); border-radius: 1px;"></div>
+                                `}
+                            </div>
+                            <div style="margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.5);">Цель: ${target}${unit}</div>
+                        ` : `
+                            <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden;">
+                                <div style="width: 100%; height: 100%; background: ${color};"></div>
+                            </div>
+                            <div style="margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.5);">Целевое значение</div>
+                        `}
+                    </div>
+                `;
+            }
+
+            const hasActualData = actualCalories && actualCalories > 0;
+
+            container.innerHTML = `
+                <div class="card-header">
+                    <span class="card-icon">🍽️</span>
+                    <span class="card-title">${hasActualData ? 'ПИТАНИЕ (ЦЕЛЬ vs ФАКТ)' : 'ПИТАНИЕ (ЦЕЛИ)'}</span>
+                </div>
+                
+                ${hasActualData && actualNutritionData.dailyEntries ? `
+                    <div style="margin-bottom: 12px; padding: 8px 10px; background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">
+                            Фактические средние
+                        </div>
+                        <div style="padding: 4px 10px; background: rgba(76, 175, 80, 0.2); border-radius: 12px;">
+                            <span style="font-size: 11px; font-weight: 600; color: #4CAF50;">${actualNutritionData.daysCount || actualNutritionData.dailyEntries?.length || 0} дней</span>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 4px;">
+                    <span class="card-value">${targetCalories} ккал</span>
+                    <span style="font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-left: 8px;">цель в день</span>
+                </div>
+                <div class="card-subtitle">TDEE: ${tdee} ккал (дефицит ${deficit} ккал)</div>
+                
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+                    ${createParamBlock('Калории', targetCalories, actualCalories, ' ккал', '#2ecc71')}
+                    ${createParamBlock('Белки', targetProtein, actualProtein, 'г', '#3498db')}
+                    ${createParamBlock('Жиры', targetFats, actualFats, 'г', '#f39c12')}
+                    ${createParamBlock('Углеводы', targetCarbs, actualCarbs, 'г', '#27ae60')}
+                </div>
+                
+                ${(() => {
+                    const lastNote = hasActualData && actualNutritionData.dailyEntries 
+                        ? actualNutritionData.dailyEntries.filter(e => e.note && e.note.trim()).slice(-1)[0]
+                        : null;
+                    return lastNote ? `
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; border-left: 3px solid #4CAF50;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 11px; color: rgba(255, 255, 255, 0.5);">💬 Комментарий тренера</span>
+                                <span style="font-size: 10px; color: rgba(255, 255, 255, 0.4);">${lastNote.date}</span>
+                            </div>
+                            <div style="font-size: 13px; color: rgba(255, 255, 255, 0.9); line-height: 1.5;">${lastNote.note}</div>
+                        </div>
+                    ` : '';
+                })()}
+            `;
+        }
+
+        function renderWeeklyStatsCard() {
+            const container = document.getElementById('weeklyStatsCard');
+            const targetWorkouts = parseInt(goalsData?.workouts_goal || 30);
+            const totalDays = parseInt(goalsData?.program_duration_days || goalsData?.duration_days || 90);
+            
+            // Подсчёт статистики
+            let workouts = 0;
+            let daysElapsed = Object.keys(dailyData).length || 1;
+            let idealDays = 0;
+            let normalDays = 0;
+            let failDays = 0;
+            
+            // Workouts count
+            if (window.workoutHistoryData && window.workoutHistoryData.length > 0) {
+                const uniqueDates = new Set();
+                window.workoutHistoryData.forEach(workout => {
+                    if (workout.date) uniqueDates.add(String(workout.date));
+                });
+                workouts = uniqueDates.size;
+            }
+            
+            // Nutrition stats
+            if (dailyData && Object.keys(dailyData).length > 0) {
+                Object.values(dailyData).forEach(day => {
+                    if (day.nutrition === 'Идеально') idealDays++;
+                    else if (day.nutrition === 'Норма') normalDays++;
+                    else if (day.nutrition === 'Срыв') failDays++;
+                });
+            }
+            
+            // Взвешенная система: Идеально=100%, Норма=70%, Срыв=40%
+            const nutritionScore = daysElapsed > 0 ? ((idealDays * 100 + normalDays * 70 + failDays * 40) / daysElapsed).toFixed(0) : 0;
+            const daysInDeficit = idealDays + normalDays;
+            
+            // Sleep stats
+            let sleepHours = 8.0;
+            let wakeupTime = '08:00';
+            
+            if (dailyData && Object.keys(dailyData).length > 0) {
+                let totalSleep = 0;
+                let sleepCount = 0;
+                let wakeupTimes = [];
+                
+                Object.values(dailyData).forEach(day => {
+                    if (day.sleepHours || day.sleep) {
+                        const sleep = parseFloat(day.sleepHours || day.sleep);
+                        if (!isNaN(sleep) && sleep > 0) {
+                            totalSleep += sleep;
+                            sleepCount++;
+                        }
+                    }
+                    if (day.wakeTime && day.wakeTime !== '') {
+                        wakeupTimes.push(day.wakeTime);
+                    }
+                });
+                
+                if (sleepCount > 0) sleepHours = totalSleep / sleepCount;
+                
+                if (wakeupTimes.length > 0) {
+                    let validCount = 0;
+                    const totalMinutes = wakeupTimes.reduce((sum, time) => {
+                        let hours = 0, mins = 0;
+                        
+                        if (!time) return sum;
+                        
+                        const timeStr = String(time);
+                        
+                        // ПРИОРИТЕТ 1: Строка "HH:MM" (основной формат от API v8.7+)
+                        if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+                            const parts = timeStr.split(':');
+                            hours = parseInt(parts[0]) || 0;
+                            mins = parseInt(parts[1]) || 0;
+                        }
+                        // ПРИОРИТЕТ 2: ISO формат (legacy от старых API)
+                        // Конвертируем UTC → локальное время таблицы (UTC+7), корректируем погрешность
+                        else if (timeStr.includes('1899') || timeStr.includes('1970') || (timeStr.includes('T') && timeStr.includes('Z'))) {
+                            const d = new Date(timeStr);
+                            if (!isNaN(d.getTime())) {
+                                let totalMins = d.getUTCHours() * 60 + d.getUTCMinutes();
+                                totalMins = totalMins + 7 * 60 - 4; // +7ч timezone, -4мин погрешность
+                                hours = Math.floor(totalMins / 60) % 24;
+                                mins = totalMins % 60;
+                            }
+                        }
+                        // ПРИОРИТЕТ 3: Десятичное число (0.458... = 11:00)
+                        else if (!isNaN(parseFloat(timeStr)) && parseFloat(timeStr) < 1 && parseFloat(timeStr) > 0) {
+                            const totalMins = Math.round(parseFloat(timeStr) * 24 * 60);
+                            hours = Math.floor(totalMins / 60);
+                            mins = totalMins % 60;
+                        }
+                        
+                        // Валидация
+                        if (hours >= 0 && hours <= 23 && mins >= 0 && mins <= 59) {
+                            validCount++;
+                            return sum + hours * 60 + mins;
+                        }
+                        return sum;
+                    }, 0);
+                    
+                    if (validCount > 0 && totalMinutes > 0) {
+                        const avgMinutes = totalMinutes / validCount;
+                        const avgHours = Math.floor(avgMinutes / 60);
+                        const avgMins = Math.round(avgMinutes % 60);
+                        wakeupTime = `${avgHours.toString().padStart(2, '0')}:${avgMins.toString().padStart(2, '0')}`;
+                    }
+                }
+            }
+            
+            const sleepColor = sleepHours >= 8 ? 'var(--success-green)' : sleepHours >= 7 ? 'var(--warning-yellow)' : 'var(--primary-red)';
+
+            container.innerHTML = `
+                <div class="card-header">
+                    <span class="card-icon">📊</span>
+                    <span class="card-title">СТАТИСТИКА</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Тренировок</span>
+                    <span class="stat-value">${workouts} / ${targetWorkouts}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Дней в дефиците</span>
+                    <span class="stat-value">${daysInDeficit} / ${totalDays}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Качество питания</span>
+                    <span class="stat-value">${nutritionScore}%</span>
+                </div>
+                <div class="progress-bar" style="margin-top: 10px;">
+                    <div class="progress-fill" style="width: ${Math.min(100, (workouts / targetWorkouts) * 100)}%"></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);">
+                    🔥 ${idealDays} | ✅ ${normalDays} | ❌ ${failDays}
+                </div>
+                
+                <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; color: rgba(255, 255, 255, 0.7);">😴 Сон</span>
+                    <span style="font-size: 13px; font-weight: 600; color: ${sleepColor}">${sleepHours.toFixed(1)}ч · ${wakeupTime}</span>
+                </div>
+            `;
+        }
+
+        // Маппинг типов тренировок
+        const workoutTypeNames = {
+            'A': '🔥 Грудь + Трицепс',
+            'B': '💪 Спина + Бицепс',
+            'C': '🏋️ Плечи + Ноги',
+            'FREE': '🎯 Свободная',
+            'F': '🎯 Свободная'
+        };
+        
+        // Получить тренировку по дате
+        function getWorkoutByDate(dateStr) {
+            if (!window.workoutHistoryData) return null;
+            
+            // Нормализуем искомую дату (поддержка DD.MM.YYYY и YYYY-MM-DD)
+            let targetDate;
+            if (dateStr.includes('.')) {
+                const targetParts = dateStr.split('.');
+                targetDate = new Date(targetParts[2], targetParts[1] - 1, targetParts[0]);
+            } else if (dateStr.includes('-')) {
+                const targetParts = dateStr.split('-');
+                targetDate = new Date(targetParts[0], targetParts[1] - 1, targetParts[2]);
+            } else {
+                targetDate = new Date(dateStr);
+            }
+            targetDate.setHours(0, 0, 0, 0);
+            
+            for (const workout of window.workoutHistoryData) {
+                let workoutDate;
+                const d = workout.date;
+                
+                if (d instanceof Date) {
+                    workoutDate = new Date(d);
+                } else if (typeof d === 'string') {
+                    if (d.includes('.')) {
+                        const parts = d.split('.');
+                        workoutDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                    } else if (d.includes('/')) {
+                        const parts = d.split('/');
+                        workoutDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                    } else {
+                        workoutDate = new Date(d);
+                    }
+                }
+                
+                if (workoutDate) {
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (workoutDate.getTime() === targetDate.getTime()) {
+                        return workout;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        // Получить КБЖУ по дате
+        function getKBJUByDate(dateStr) {
+            if (!actualNutritionData || !actualNutritionData.dailyEntries) return null;
+            
+            // dateStr формат: DD.MM.YYYY или YYYY-MM-DD
+            let targetDay, targetMonth, targetYear;
+            
+            if (dateStr.includes('.')) {
+                const targetParts = dateStr.split('.');
+                targetDay = parseInt(targetParts[0]);
+                targetMonth = parseInt(targetParts[1]);
+                targetYear = parseInt(targetParts[2]);
+            } else if (dateStr.includes('-')) {
+                const targetParts = dateStr.split('-');
+                targetYear = parseInt(targetParts[0]);
+                targetMonth = parseInt(targetParts[1]);
+                targetDay = parseInt(targetParts[2]);
+            } else {
+                return null;
+            }
+            
+            for (const entry of actualNutritionData.dailyEntries) {
+                const entryDate = entry.date;
+                
+                // Парсим дату из entry (может быть DD.MM.YYYY, DD.MM, YYYY-MM-DD)
+                let entryDay, entryMonth, entryYear;
+                
+                if (entryDate.includes('-')) {
+                    // Формат YYYY-MM-DD
+                    const parts = entryDate.split('-');
+                    entryYear = parseInt(parts[0]);
+                    entryMonth = parseInt(parts[1]);
+                    entryDay = parseInt(parts[2]);
+                } else if (entryDate.includes('.')) {
+                    // Формат DD.MM или DD.MM.YYYY
+                    const parts = entryDate.split('.');
+                    entryDay = parseInt(parts[0]);
+                    entryMonth = parseInt(parts[1]);
+                    entryYear = parts[2] ? parseInt(parts[2]) : targetYear;
+                } else {
+                    continue;
+                }
+                
+                // Сравниваем
+                if (entryDay === targetDay && entryMonth === targetMonth && 
+                    (entryYear === targetYear || !entryYear)) {
+                    return entry;
+                }
+            }
+            return null;
+        }
+        
+        // Показать popup дня
+        function showDayPopup(dateStr, dayNumber, nutrition, workout, kbju) {
+            const popup = document.getElementById('dayPopup');
+            const overlay = document.getElementById('dayPopupOverlay');
+            const content = document.getElementById('dayPopupContent');
+            
+            // Целевые значения из nutritionData
+            const targetCal = Math.round(nutritionData?.targetCalories || 2587);
+            const targetProt = Math.round(nutritionData?.protein || nutritionData?.targetProtein || 189);
+            const targetFats = Math.round(nutritionData?.fat || nutritionData?.targetFats || 94);
+            const targetCarbs = Math.round(nutritionData?.carbs || nutritionData?.targetCarbs || 246);
+            
+            let html = `
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--primary-red);">День ${dayNumber}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">${dateStr}</div>
+                </div>
+            `;
+            
+            // КБЖУ - сравнение факт vs цель
+            if (kbju && kbju.calories > 0) {
+                function createRow(label, fact, target, unit) {
+                    const diff = fact - target;
+                    const diffText = diff >= 0 ? `+${diff}` : `${diff}`;
+                    const diffColor = diff > 0 ? '#f39c12' : '#4CAF50';
+                    
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <span style="color: var(--text-secondary); font-size: 14px;">${label}</span>
+                            <div style="text-align: right;">
+                                <span style="font-weight: 700; font-size: 15px;">${fact}</span>
+                                <span style="color: var(--text-secondary); font-size: 13px;"> / ${target}${unit}</span>
+                                <span style="color: ${diffColor}; font-size: 13px; margin-left: 8px;">${diffText}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                    <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">КБЖУ: Факт vs Цель</div>
+                        ${createRow('Калории', kbju.calories, targetCal, '')}
+                        ${createRow('Белок', kbju.protein, targetProt, 'г')}
+                        ${createRow('Жиры', kbju.fats, targetFats, 'г')}
+                        ${createRow('Углеводы', kbju.carbs, targetCarbs, 'г')}
+                        ${kbju.note ? `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: var(--text-secondary); line-height: 1.4;">💬 ${kbju.note}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Тренировка
+            if (workout) {
+                const workoutName = workoutTypeNames[workout.type] || workout.type;
+                html += `
+                    <div style="background: rgba(255, 51, 51, 0.1); border-radius: 10px; padding: 12px; border-left: 3px solid var(--primary-red);">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">ТРЕНИРОВКА</div>
+                        <div style="font-size: 16px; font-weight: 600;">${workoutName}</div>
+                        ${workout.totalTonnage ? `<div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Тоннаж: ${Math.round(workout.totalTonnage)} кг</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Если нет данных (без kbju и workout)
+            if (!kbju && !workout) {
+                html += `
+                    <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                        <div style="font-size: 32px; margin-bottom: 8px;">⚪</div>
+                        <div>Нет данных за этот день</div>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = html;
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+        }
+        
+        function closeDayPopup() {
+            document.getElementById('dayPopup').style.display = 'none';
+            document.getElementById('dayPopupOverlay').style.display = 'none';
+        }
+        
+        function onDayClick(dateStr, dayNumber, nutrition, workout, kbju) {
+            showDayPopup(dateStr, dayNumber, nutrition, workout, kbju);
+        }
+        
+        function renderNutritionTracker() {
+            const container = document.getElementById('nutritionTracker');
+            
+            let startDateStr = goalsData?.start_date || '2026-01-05';
+            let programStart;
+            
+            if (startDateStr.includes('-')) {
+                programStart = new Date(startDateStr);
+            } else if (startDateStr.includes('.')) {
+                const parts = startDateStr.split('.');
+                if (parts.length === 3) {
+                    programStart = new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+            }
+            
+            if (!programStart || isNaN(programStart.getTime())) {
+                programStart = new Date('2026-01-05');
+            }
+            
+            const programDuration = parseInt(goalsData?.program_duration_days || goalsData?.duration_days || 90);
+            
+            // Find Monday
+            const dayOfWeek = programStart.getDay();
+            const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const weekStart = new Date(programStart);
+            weekStart.setDate(weekStart.getDate() + daysToMonday);
+            
+            const totalWeeks = Math.ceil(programDuration / 7);
+            
+            let html = '';
+            
+            for (let week = 0; week < totalWeeks; week++) {
+                html += `<div style="margin-bottom: 16px;">`;
+                html += `<div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 6px; font-weight: 600;">НЕДЕЛЯ ${week + 1}</div>`;
+                html += `<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">`;
+                
+                const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+                
+                for (let day = 0; day < 7; day++) {
+                    const dayNumber = week * 7 + day + 1;
+                    if (dayNumber > programDuration) break;
+                    
+                    const currentDate = new Date(weekStart);
+                    currentDate.setDate(currentDate.getDate() + week * 7 + day);
+                    
+                    const dd = String(currentDate.getDate()).padStart(2, '0');
+                    const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+                    const yyyy = currentDate.getFullYear();
+                    const dateStr = `${dd}.${mm}.${yyyy}`;
+                    const displayDate = `${dd}.${mm}`;
+                    
+                    let emoji = '⚪';
+                    let bgColor = 'rgba(255,255,255,0.05)';
+                    let borderColor = 'rgba(255,255,255,0.1)';
+                    
+                    let dayData = dailyData[dateStr];
+                    
+                    if (!dayData) {
+                        for (const [key, value] of Object.entries(dailyData)) {
+                            try {
+                                let keyDate;
+                                if (key.includes('.')) {
+                                    // Формат DD.MM.YYYY
+                                    const parts = key.split('.');
+                                    keyDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                                } else if (key.includes('-')) {
+                                    // Формат YYYY-MM-DD (ISO)
+                                    const parts = key.split('-');
+                                    keyDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                                }
+                                
+                                if (keyDate && 
+                                    keyDate.getDate() === currentDate.getDate() &&
+                                    keyDate.getMonth() === currentDate.getMonth() &&
+                                    keyDate.getFullYear() === currentDate.getFullYear()) {
+                                    dayData = value;
+                                    break;
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    if (dayData) {
+                        const nutrition = dayData.nutrition;
+                        if (nutrition === 'Идеально') {
+                            emoji = '🔥';
+                            bgColor = 'rgba(76, 175, 80, 0.2)';
+                            borderColor = '#4CAF50';
+                        } else if (nutrition === 'Норма') {
+                            emoji = '✅';
+                            bgColor = 'rgba(255, 193, 7, 0.2)';
+                            borderColor = '#FFC107';
+                        } else if (nutrition === 'Срыв') {
+                            emoji = '❌';
+                            bgColor = 'rgba(255, 51, 51, 0.2)';
+                            borderColor = '#ff3333';
+                        }
+                    }
+                    
+                    // Проверяем тренировку
+                    const workout = getWorkoutByDate(dateStr);
+                    const hasWorkout = !!workout;
+                    
+                    // Получаем КБЖУ
+                    const kbju = getKBJUByDate(dateStr);
+                    
+                    // Проверяем есть ли данные для клика
+                    const hasData = dayData || workout || kbju;
+                    
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    currentDate.setHours(0,0,0,0);
+                    const isToday = currentDate.getTime() === today.getTime();
+                    
+                    // Данные для popup
+                    const nutritionValue = dayData?.nutrition || '';
+                    const popupData = JSON.stringify({
+                        date: dateStr,
+                        day: dayNumber,
+                        nutrition: nutritionValue,
+                        hasWorkout: hasWorkout,
+                        workoutType: workout?.type || '',
+                        workoutTonnage: workout?.totalTonnage || 0,
+                        kbju: kbju ? { calories: kbju.calories, protein: kbju.protein, fats: kbju.fats, carbs: kbju.carbs, note: kbju.note || '' } : null
+                    }).replace(/"/g, '&quot;');
+                    
+                    html += `
+                        <div onclick="onDayClick('${dateStr}', ${dayNumber}, '${nutritionValue}', ${hasWorkout ? JSON.stringify(workout).replace(/"/g, '&quot;') : 'null'}, ${kbju ? JSON.stringify(kbju).replace(/"/g, '&quot;') : 'null'})" style="
+                            background: ${bgColor};
+                            border: 2px solid ${isToday ? 'var(--primary-red)' : borderColor};
+                            border-radius: 8px;
+                            padding: 6px 4px;
+                            text-align: center;
+                            min-height: 75px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                            cursor: ${hasData ? 'pointer' : 'default'};
+                            transition: transform 0.1s;
+                        " ${hasData ? 'onmousedown="this.style.transform=\'scale(0.95)\'" onmouseup="this.style.transform=\'scale(1)\'" onmouseleave="this.style.transform=\'scale(1)\'"' : ''}>
+                            <div style="font-size: 8px; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px;">${dayNames[day]}</div>
+                            <div style="font-size: 22px; margin-bottom: 1px;">${emoji}</div>
+                            <div style="font-size: 9px; color: var(--text-secondary); font-weight: 600;">День ${dayNumber}</div>
+                            <div style="font-size: 8px; color: var(--text-secondary);">${displayDate}</div>
+                            ${hasWorkout ? `<div style="color: #ff3333; font-size: 10px; line-height: 1; margin-top: 2px;">●</div>` : ''}
+                        </div>
+                    `;
+                }
+                
+                html += `</div></div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function renderWeightChart() {
+            const canvas = document.getElementById('weightChart');
+            const statsDiv = document.getElementById('weightChartStats');
+            const chartCard = document.getElementById('weightChartCard');
+            
+            if (!canvas || !chartCard) return;
+            
+            const weightData = [];
+            if (dailyData && Object.keys(dailyData).length > 0) {
+                Object.entries(dailyData).forEach(([date, day]) => {
+                    if (day.weight && parseFloat(day.weight) > 0) {
+                        weightData.push({
+                            date: date,
+                            weight: parseFloat(day.weight)
+                        });
+                    }
+                });
+            }
+            
+            weightData.sort((a, b) => {
+                const parseD = (d) => {
+                    const str = String(d);
+                    if (str.includes('-')) return new Date(str);
+                    const parts = str.split('.');
+                    if (parts.length >= 2) {
+                        const year = parts[2] || '2026';
+                        return new Date(year, parts[1] - 1, parts[0]);
+                    }
+                    return new Date(str);
+                };
+                return parseD(a.date) - parseD(b.date);
+            });
+            
+            if (weightData.length < 1) {
+                chartCard.style.display = 'none';
+                return;
+            }
+            
+            chartCard.style.display = 'block';
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.offsetWidth;
+            const height = 120;
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+            ctx.scale(2, 2);
+            
+            const marginLeft = 45;
+            const marginRight = 15;
+            const marginTop = 20;
+            const marginBottom = 30;
+            const chartWidth = width - marginLeft - marginRight;
+            const chartHeight = height - marginTop - marginBottom;
+            
+            const weights = weightData.map(d => d.weight);
+            const minWeight = Math.floor(Math.min(...weights) - 1);
+            const maxWeight = Math.ceil(Math.max(...weights) + 1);
+            const targetWeight = parseFloat(goalsData?.target_weight || 90);
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            const ySteps = 5;
+            for (let i = 0; i <= ySteps; i++) {
+                const y = marginTop + (i / ySteps) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(marginLeft, y);
+                ctx.lineTo(width - marginRight, y);
+                ctx.stroke();
+                
+                const weightVal = maxWeight - (i / ySteps) * (maxWeight - minWeight);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.font = '10px system-ui';
+                ctx.textAlign = 'right';
+                ctx.fillText(weightVal.toFixed(1), marginLeft - 5, y + 3);
+            }
+            
+            const weightRange = maxWeight - minWeight || 1;
+            const targetY = marginTop + ((maxWeight - targetWeight) / weightRange) * chartHeight;
+            if (targetY >= marginTop && targetY <= marginTop + chartHeight) {
+                ctx.strokeStyle = '#4CAF50';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(marginLeft, targetY);
+                ctx.lineTo(width - marginRight, targetY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = '10px system-ui';
+                ctx.textAlign = 'left';
+                ctx.fillText('Цель ' + targetWeight, marginLeft + 5, targetY - 5);
+            }
+            
+            if (weightData.length > 1) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                weightData.forEach((d, i) => {
+                    const x = marginLeft + (i / (weightData.length - 1)) * chartWidth;
+                    const y = marginTop + ((maxWeight - d.weight) / (maxWeight - minWeight || 1)) * chartHeight;
+                    
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+            
+            weightData.forEach((d, i) => {
+                const x = weightData.length === 1 
+                    ? marginLeft + chartWidth / 2 
+                    : marginLeft + (i / (weightData.length - 1)) * chartWidth;
+                const y = marginTop + ((maxWeight - d.weight) / (maxWeight - minWeight || 1)) * chartHeight;
+                
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            const formatDate = (d) => {
+                const str = String(d);
+                if (str.includes('-')) {
+                    const parts = str.split('-');
+                    return `${parts[2]}.${parts[1]}`;
+                }
+                return str.split('.').slice(0, 2).join('.');
+            };
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '10px system-ui';
+            ctx.textAlign = 'center';
+            if (weightData.length === 1) {
+                ctx.fillText(formatDate(weightData[0].date), marginLeft + chartWidth / 2, height - 5);
+            } else {
+                ctx.fillText(formatDate(weightData[0].date), marginLeft, height - 5);
+                ctx.fillText(formatDate(weightData[weightData.length - 1].date), width - marginRight, height - 5);
+            }
+            
+            const firstWeight = weightData[0].weight;
+            const lastWeight = weightData[weightData.length - 1].weight;
+            const diff = lastWeight - firstWeight;
+            const diffColor = diff <= 0 ? '#4CAF50' : '#e74c3c';
+            
+            statsDiv.innerHTML = `
+                <div>Старт: <strong>${firstWeight} кг</strong></div>
+                <div>Сейчас: <strong>${lastWeight} кг</strong></div>
+                <div style="color: ${diffColor};">${diff > 0 ? '+' : ''}${diff.toFixed(1)} кг</div>
+                <div>До цели: <strong>${(lastWeight - targetWeight).toFixed(1)} кг</strong></div>
+            `;
+        }
+
+        function renderTonnageChart() {
+            const canvas = document.getElementById('tonnageChart');
+            const chartCard = document.getElementById('tonnageChartCard');
+            const statsContainer = document.getElementById('tonnageChartStats');
+            
+            if (!canvas || !chartCard) return;
+            
+            // Функция парсинга даты
+            function parseAnyDate(dateStr) {
+                const str = String(dateStr);
+                if (str.includes('.')) {
+                    const parts = str.split('.');
+                    if (parts.length >= 2) {
+                        const year = parts[2] || new Date().getFullYear();
+                        return new Date(year, parts[1]-1, parts[0]);
+                    }
+                } else if (str.includes('-')) {
+                    const parts = str.split('-');
+                    if (parts.length === 3) return new Date(parts[0], parts[1]-1, parts[2]);
+                }
+                return new Date(str);
+            }
+            
+            // Функция нормализации даты в формат DD.MM.YYYY
+            function normalizeDate(dateStr) {
+                const date = parseAnyDate(dateStr);
+                if (isNaN(date)) return dateStr;
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}.${month}.${year}`;
+            }
+            
+            // Собираем данные: группируем по УНИКАЛЬНОЙ ДАТЕ
+            const dailyTonnage = {};
+            
+            if (window.workoutHistoryData && window.workoutHistoryData.length > 0) {
+                console.log('📊 workoutHistoryData:', window.workoutHistoryData);
+                
+                window.workoutHistoryData.forEach(workout => {
+                    if (!workout.date) return;
+                    
+                    // Нормализуем дату для группировки
+                    const dateKey = normalizeDate(workout.date);
+                    
+                    let tonnage = 0;
+                    
+                    // Считаем тоннаж из упражнений
+                    if (workout.exercises && workout.exercises.length > 0) {
+                        workout.exercises.forEach(ex => {
+                            if (ex.tonnage) {
+                                tonnage += parseFloat(ex.tonnage) || 0;
+                            } else if (ex.sets && ex.sets.length > 0) {
+                                ex.sets.forEach(set => {
+                                    const w = parseFloat(set.weight) || 0;
+                                    const r = parseInt(set.reps) || 0;
+                                    tonnage += w * r;
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Или берём totalTonnage
+                    if (tonnage === 0 && workout.totalTonnage) {
+                        tonnage = parseFloat(workout.totalTonnage) || 0;
+                    }
+                    
+                    console.log(`  Workout ${workout.date} (${dateKey}): tonnage=${tonnage}`);
+                    
+                    if (tonnage > 0) {
+                        if (!dailyTonnage[dateKey]) {
+                            dailyTonnage[dateKey] = { 
+                                date: dateKey, 
+                                tonnage: 0, 
+                                workouts: 0,
+                                parsedDate: parseAnyDate(dateKey)
+                            };
+                        }
+                        dailyTonnage[dateKey].tonnage += tonnage;
+                        dailyTonnage[dateKey].workouts++;
+                    }
+                });
+            }
+            
+            // Преобразуем в массив и сортируем по дате
+            const tonnageData = Object.values(dailyTonnage)
+                .sort((a, b) => a.parsedDate - b.parsedDate);
+            
+            console.log('📊 tonnageData (grouped by date):', tonnageData);
+            
+            // Если нет данных - скрываем карточку
+            if (tonnageData.length === 0) {
+                chartCard.style.display = 'none';
+                return;
+            }
+            
+            chartCard.style.display = 'block';
+            
+            // Размеры canvas
+            const containerWidth = chartCard.clientWidth - 30;
+            const width = Math.max(containerWidth, 300);
+            const height = 150;
+            
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.scale(2, 2);
+            
+            const marginLeft = 45;
+            const marginRight = 20;
+            const marginTop = 25;
+            const marginBottom = 35;
+            const chartWidth = width - marginLeft - marginRight;
+            const chartHeight = height - marginTop - marginBottom;
+            
+            const tonnages = tonnageData.map(d => d.tonnage);
+            const maxTonnage = Math.ceil(Math.max(...tonnages) * 1.15 / 1000) * 1000;
+            
+            // Очищаем и рисуем фон
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Горизонтальные линии сетки
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            const ySteps = 4;
+            for (let i = 0; i <= ySteps; i++) {
+                const y = marginTop + (i / ySteps) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(marginLeft, y);
+                ctx.lineTo(width - marginRight, y);
+                ctx.stroke();
+                
+                // Метки Y
+                const val = maxTonnage - (i / ySteps) * maxTonnage;
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.font = '9px system-ui';
+                ctx.textAlign = 'right';
+                ctx.fillText((val / 1000).toFixed(1) + 'т', marginLeft - 5, y + 3);
+            }
+            
+            // Функция получения X координаты для точки
+            function getX(index) {
+                if (tonnageData.length === 1) {
+                    return marginLeft + chartWidth / 2;
+                }
+                return marginLeft + (index / (tonnageData.length - 1)) * chartWidth;
+            }
+            
+            // Функция получения Y координаты для значения
+            function getY(value) {
+                return marginTop + ((maxTonnage - value) / maxTonnage) * chartHeight;
+            }
+            
+            // Заливка под кривой
+            if (tonnageData.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(getX(0), getY(tonnageData[0].tonnage));
+                for (let i = 1; i < tonnageData.length; i++) {
+                    ctx.lineTo(getX(i), getY(tonnageData[i].tonnage));
+                }
+                ctx.lineTo(getX(tonnageData.length - 1), marginTop + chartHeight);
+                ctx.lineTo(getX(0), marginTop + chartHeight);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(243, 156, 18, 0.15)';
+                ctx.fill();
+            }
+            
+            // Линия графика
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            for (let i = 0; i < tonnageData.length; i++) {
+                const x = getX(i);
+                const y = getY(tonnageData[i].tonnage);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Точки и подписи
+            ctx.font = '9px system-ui';
+            tonnageData.forEach((d, i) => {
+                const x = getX(i);
+                const y = getY(d.tonnage);
+                
+                // Точка
+                ctx.fillStyle = '#f39c12';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#1a1a1a';
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Значение над точкой
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.textAlign = 'center';
+                ctx.fillText((d.tonnage / 1000).toFixed(1) + 'т', x, y - 12);
+                
+                // Дата под точкой
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                const dateLabel = d.date.split('.').slice(0, 2).join('.');
+                ctx.fillText(dateLabel, x, height - 10);
+            });
+            
+            // Статистика
+            const totalWorkouts = tonnageData.reduce((sum, d) => sum + d.workouts, 0);
+            const totalTonnage = tonnages.reduce((a, b) => a + b, 0);
+            const avgTonnage = Math.round(totalTonnage / tonnageData.length);
+            const maxT = Math.max(...tonnages);
+            
+            statsContainer.innerHTML = `
+                <div>Тренировок: <strong>${totalWorkouts}</strong></div>
+                <div>Среднее: <strong>${Math.round(avgTonnage)} кг</strong></div>
+                <div>Макс: <strong>${Math.round(maxT)} кг</strong></div>
+                <div>Всего: <strong>${Math.round(totalTonnage / 1000)}т</strong></div>
+            `;
+        }
+
+        function renderWeekComparison() {
+            const container = document.getElementById('weekComparisonContent');
+            if (!container) return;
+            
+            // Функция парсинга даты
+            function parseAnyDate(dateStr) {
+                const str = String(dateStr);
+                if (str.includes('.')) {
+                    const parts = str.split('.');
+                    if (parts.length >= 2) {
+                        const year = parts[2] || new Date().getFullYear();
+                        return new Date(year, parts[1]-1, parts[0]);
+                    }
+                } else if (str.includes('-')) {
+                    const parts = str.split('-');
+                    if (parts.length === 3) return new Date(parts[0], parts[1]-1, parts[2]);
+                }
+                return new Date(str);
+            }
+            
+            // Получаем дату старта программы
+            const startDateStr = goalsData?.start_date || goalsData?.program_start_date;
+            let programStart;
+            if (startDateStr) {
+                programStart = parseAnyDate(startDateStr);
+            } else {
+                const dates = Object.keys(dailyData || {}).map(d => parseAnyDate(d)).filter(d => !isNaN(d));
+                programStart = dates.length > 0 ? new Date(Math.min(...dates)) : new Date();
+            }
+            
+            // Группируем данные по неделям
+            const weeks = {};
+            
+            // Данные из Daily (питание, вес, сон)
+            Object.entries(dailyData || {}).forEach(([dateStr, data]) => {
+                const date = parseAnyDate(dateStr);
+                if (isNaN(date)) return;
+                
+                const daysSinceStart = Math.floor((date - programStart) / (1000 * 60 * 60 * 24));
+                const weekNum = Math.floor(daysSinceStart / 7) + 1;
+                
+                if (weekNum < 1) return;
+                
+                if (!weeks[weekNum]) {
+                    weeks[weekNum] = {
+                        nutrition: { ideal: 0, normal: 0, fail: 0 },
+                        weights: [],
+                        sleepHours: [],
+                        tonnage: 0,
+                        workouts: 0,
+                        days: 0,
+                        pullupsMax: 0,
+                        benchMax: 0
+                    };
+                }
+                
+                weeks[weekNum].days++;
+                
+                // Питание (с нормализацией)
+                const nutrRaw = data.nutrition;
+                const nutr = String(data.nutrition || '').trim().toLowerCase();
+                
+                // Отладка: логируем значения питания
+                console.log(`📅 ${dateStr} (Неделя ${weekNum}): питание raw="${nutrRaw}", normalized="${nutr}"`);
+                
+                if (nutr === 'идеально') weeks[weekNum].nutrition.ideal++;
+                else if (nutr === 'норма') weeks[weekNum].nutrition.normal++;
+                else if (nutr === 'срыв') weeks[weekNum].nutrition.fail++;
+                else if (nutr && nutr !== '') {
+                    // Если значение есть, но не распознано - логируем
+                    console.warn(`⚠️ Неизвестное значение питания: "${nutr}"`);
+                }
+                
+                // Вес
+                if (data.weight && parseFloat(data.weight) > 0) {
+                    weeks[weekNum].weights.push(parseFloat(data.weight));
+                }
+                
+                // Сон
+                if (data.sleepHours || data.sleep) {
+                    const sleep = parseFloat(data.sleepHours || data.sleep);
+                    if (!isNaN(sleep) && sleep > 0) weeks[weekNum].sleepHours.push(sleep);
+                }
+                
+                // Подтягивания (макс за неделю)
+                if (data.pullups) {
+                    const pullups = parseInt(data.pullups);
+                    if (!isNaN(pullups) && pullups > weeks[weekNum].pullupsMax) {
+                        weeks[weekNum].pullupsMax = pullups;
+                    }
+                }
+                
+                // Жим (макс за неделю)
+                if (data.bench) {
+                    const bench = parseFloat(data.bench);
+                    if (!isNaN(bench) && bench > weeks[weekNum].benchMax) {
+                        weeks[weekNum].benchMax = bench;
+                    }
+                }
+            });
+            
+            // Данные из Workouts (тренировки, тоннаж)
+            (window.workoutHistoryData || []).forEach(workout => {
+                if (!workout.date) return;
+                
+                const date = parseAnyDate(workout.date);
+                if (isNaN(date)) return;
+                
+                const daysSinceStart = Math.floor((date - programStart) / (1000 * 60 * 60 * 24));
+                const weekNum = Math.floor(daysSinceStart / 7) + 1;
+                
+                if (weekNum < 1) return;
+                
+                if (!weeks[weekNum]) {
+                    weeks[weekNum] = {
+                        nutrition: { ideal: 0, normal: 0, fail: 0 },
+                        weights: [],
+                        sleepHours: [],
+                        tonnage: 0,
+                        workouts: 0,
+                        days: 0,
+                        pullupsMax: 0,
+                        benchMax: 0
+                    };
+                }
+                
+                weeks[weekNum].workouts++;
+                
+                // Тоннаж
+                let tonnage = 0;
+                if (workout.exercises) {
+                    workout.exercises.forEach(ex => {
+                        if (ex.tonnage) tonnage += parseFloat(ex.tonnage) || 0;
+                        else if (ex.sets) {
+                            ex.sets.forEach(s => {
+                                tonnage += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0);
+                            });
+                        }
+                    });
+                }
+                if (tonnage === 0 && workout.totalTonnage) {
+                    tonnage = parseFloat(workout.totalTonnage) || 0;
+                }
+                weeks[weekNum].tonnage += tonnage;
+            });
+            
+            const weekNums = Object.keys(weeks).map(Number).sort((a, b) => a - b);
+            
+            // Отладка: итоги по неделям
+            console.log('📊 Статистика по неделям:');
+            console.log('   Старт программы:', programStart);
+            weekNums.forEach(wn => {
+                const w = weeks[wn];
+                const total = w.nutrition.ideal + w.nutrition.normal + w.nutrition.fail;
+                console.log(`  Неделя ${wn}: ${w.days} дней, питание: ideal=${w.nutrition.ideal}, normal=${w.nutrition.normal}, fail=${w.nutrition.fail}, total=${total}`);
+            });
+            
+            if (weekNums.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; padding: 20px;">
+                        Нет данных для сравнения
+                    </div>
+                `;
+                return;
+            }
+            
+            // Находим неделю с максимальным тоннажем
+            let maxTonnageWeek = null;
+            let maxTonnageValue = 0;
+            weekNums.forEach(weekNum => {
+                if (weeks[weekNum].tonnage > maxTonnageValue) {
+                    maxTonnageValue = weeks[weekNum].tonnage;
+                    maxTonnageWeek = weekNum;
+                }
+            });
+            
+            // Находим последний известный вес для недель без данных
+            let lastKnownWeight = null;
+            weekNums.forEach(weekNum => {
+                const week = weeks[weekNum];
+                if (week.weights.length > 0) {
+                    lastKnownWeight = week.weights[week.weights.length - 1];
+                }
+            });
+            
+            // Генерируем HTML для недель
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            
+            let carryOverWeight = null; // Вес для переноса в следующие недели
+            
+            weekNums.forEach(weekNum => {
+                const week = weeks[weekNum];
+                const totalNutrDays = week.nutrition.ideal + week.nutrition.normal + week.nutrition.fail;
+                
+                // Вес: если есть данные - среднее, иначе - последний известный
+                let avgWeight = '—';
+                if (week.weights.length > 0) {
+                    const avg = week.weights.reduce((a,b) => a+b, 0) / week.weights.length;
+                    avgWeight = avg.toFixed(1);
+                    carryOverWeight = avg; // Сохраняем для следующих недель
+                } else if (carryOverWeight !== null) {
+                    avgWeight = carryOverWeight.toFixed(1);
+                }
+                
+                const avgSleep = week.sleepHours.length > 0
+                    ? (week.sleepHours.reduce((a,b) => a+b, 0) / week.sleepHours.length).toFixed(1)
+                    : '—';
+                
+                // Качество питания - взвешенная система
+                // Идеально = 100%, Норма = 70%, Срыв = 40%
+                let qualityPercent = 0;
+                let qualityColor = 'rgba(255,255,255,0.3)';
+                
+                if (totalNutrDays > 0) {
+                    qualityPercent = Math.round((week.nutrition.ideal * 100 + week.nutrition.normal * 70 + week.nutrition.fail * 40) / totalNutrDays);
+                    qualityColor = qualityPercent >= 85 ? '#4CAF50' : qualityPercent >= 60 ? '#FFC107' : '#e74c3c';
+                }
+                
+                // Тоннаж в тоннах + 🔥 если максимальная неделя
+                const tonnageT = (week.tonnage / 1000).toFixed(0) + 'т';
+                const isMaxTonnage = weekNum === maxTonnageWeek && maxTonnageValue > 0;
+                const tonnageDisplay = isMaxTonnage ? '🔥 ' + tonnageT : tonnageT;
+                
+                html += `
+                    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; border-left: 3px solid ${qualityColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: 600; color: #fff;">Неделя ${weekNum}</span>
+                            <span style="font-size: 11px; color: rgba(255,255,255,0.5);">${week.days} дн.</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font-size: 11px;">
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">Питание</div>
+                                <div style="font-weight: 600; color: ${qualityColor};">${totalNutrDays > 0 ? qualityPercent + '%' : '—'}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${totalNutrDays} из ${week.days} дн.</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">Тр.</div>
+                                <div style="font-weight: 600; color: #f39c12;">${week.workouts}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4);">${tonnageDisplay}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">Вес</div>
+                                <div style="font-weight: 600; color: #3498db;">${avgWeight}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4);">кг</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: rgba(255,255,255,0.5);">Сон</div>
+                                <div style="font-weight: 600; color: #9b59b6;">${avgSleep}</div>
+                                <div style="font-size: 10px; color: rgba(255,255,255,0.4);">ч</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // V4.4: Автосохранение отключено (CORS issues с POST)
+            // Для сохранения статистики используй API напрямую
+            // autoSaveCompletedWeeks(weeks, weekNums, programStart);
+        }
+        
+        /**
+         * V4.4: Автоматическое сохранение статистики завершённых недель
+         */
+        async function autoSaveCompletedWeeks(weeks, weekNums, programStart) {
+            if (!API_URL) return;
+            
+            const today = new Date();
+            const savedWeeks = JSON.parse(localStorage.getItem('savedWeeklyStats') || '{}');
+            
+            for (const weekNum of weekNums) {
+                const week = weeks[weekNum];
+                
+                // Вычисляем даты недели
+                const weekStart = new Date(programStart);
+                weekStart.setDate(weekStart.getDate() + (weekNum - 1) * 7);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                // Проверяем: неделя завершена И ещё не сохранена
+                const isCompleted = today > weekEnd;
+                const alreadySaved = savedWeeks[weekNum];
+                
+                if (isCompleted && !alreadySaved) {
+                    console.log(`📊 Сохраняем статистику недели ${weekNum}...`);
+                    
+                    // Вычисляем статистику
+                    const totalNutrDays = week.nutrition.ideal + week.nutrition.normal + week.nutrition.fail;
+                    // Взвешенная система: Идеально=100%, Норма=70%, Срыв=40%
+                    const nutritionQuality = totalNutrDays > 0 
+                        ? Math.round((week.nutrition.ideal * 100 + week.nutrition.normal * 70 + week.nutrition.fail * 40) / totalNutrDays)
+                        : 0;
+                    
+                    // Находим вес
+                    let weightStart = null, weightEnd = null;
+                    if (week.weights && week.weights.length > 0) {
+                        weightStart = week.weights[0];
+                        weightEnd = week.weights[week.weights.length - 1];
+                    }
+                    
+                    const sleepAvg = week.sleepHours && week.sleepHours.length > 0
+                        ? Math.round((week.sleepHours.reduce((a, b) => a + b, 0) / week.sleepHours.length) * 10) / 10
+                        : 0;
+                    
+                    const statsData = {
+                        action: 'saveWeeklyStats',
+                        clientId: CLIENT_ID || '',
+                        weekNumber: weekNum,
+                        startDate: formatDateISO(weekStart),
+                        endDate: formatDateISO(weekEnd),
+                        status: 'completed',
+                        daysTotal: 7,
+                        daysLogged: week.days,
+                        complianceRate: Math.round((week.days / 7) * 100),
+                        nutrition: {
+                            ideal: week.nutrition.ideal,
+                            normal: week.nutrition.normal,
+                            fail: week.nutrition.fail,
+                            quality: nutritionQuality
+                        },
+                        workouts: {
+                            count: week.workouts,
+                            tonnageTotal: Math.round(week.tonnage),
+                            tonnageAvg: week.workouts > 0 ? Math.round(week.tonnage / week.workouts) : 0
+                        },
+                        weight: {
+                            start: weightStart,
+                            end: weightEnd,
+                            change: (weightStart && weightEnd) ? Math.round((weightEnd - weightStart) * 10) / 10 : 0
+                        },
+                        sleepAvg: sleepAvg,
+                        pullupsMax: week.pullupsMax || 0,
+                        benchMax: week.benchMax || 0,
+                        notes: ''
+                    };
+                    
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(statsData)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            console.log(`✅ Неделя ${weekNum} сохранена`);
+                            savedWeeks[weekNum] = true;
+                            localStorage.setItem('savedWeeklyStats', JSON.stringify(savedWeeks));
+                        } else {
+                            console.warn(`⚠️ Ошибка сохранения недели ${weekNum}:`, result.error);
+                        }
+                    } catch (error) {
+                        console.warn(`⚠️ Не удалось сохранить неделю ${weekNum}:`, error);
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Форматирование даты в ISO формат
+         */
+        function formatDateISO(date) {
+            if (!date) return '';
+            if (!(date instanceof Date)) date = new Date(date);
+            
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}`;
+        }
+
+        function renderQuoteCard() {
+            const container = document.getElementById('quoteCard');
+            
+            if (!quotesData || !quotesData.quotes || quotesData.quotes.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">Нет цитат</p>';
+                return;
+            }
+
+            const randomQuote = quotesData.quotes[Math.floor(Math.random() * quotesData.quotes.length)];
+
+            container.innerHTML = `
+                <div class="quote-text">${randomQuote.quote}</div>
+            `;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // УТИЛИТЫ
+        // ═══════════════════════════════════════════════════════════════
+
+        function toggleTracker() {
+            const content = document.getElementById('trackerContent');
+            const arrow = document.getElementById('trackerArrow');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error-message">❌ ${message}</div>`;
+            container.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorContainer').style.display = 'none';
+        }
+
+        function updateLastUpdate() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('lastUpdate').textContent = `Обновлено: ${timeStr}`;
+        }
+    </script>
+</body>
+</html>
