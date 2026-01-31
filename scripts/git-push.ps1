@@ -77,7 +77,11 @@ if ($confirm -ne "y" -and $confirm -ne "Y" -and $confirm -ne "д" -and $confirm 
     exit 0
 }
 
-git commit -m $commitMsg
+# Сообщение через файл в UTF-8 — чтобы кириллица не искажалась на GitHub
+$msgFile = [System.IO.Path]::GetTempFileName()
+[System.IO.File]::WriteAllText($msgFile, $commitMsg, [System.Text.UTF8Encoding]::new($false))
+git commit -F $msgFile
+Remove-Item $msgFile -Force -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Коммит отменён или не удался." -ForegroundColor Red
     exit 1
