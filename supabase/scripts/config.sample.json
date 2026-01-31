@@ -1,0 +1,6 @@
+{
+  "coachMasterSpreadsheetId": "ID_ТАБЛИЦЫ_COACH_MASTER_ИЗ_URL",
+  "trainerEmail": "email@тренера.com",
+  "trainerRowIndex": null,
+  "comment": "trainerRowIndex: 0 = первая строка данных (после заголовка) — тренер; null = ищем строку без spreadsheetId или с email === trainerEmail"
+}

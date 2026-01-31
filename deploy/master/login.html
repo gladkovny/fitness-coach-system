@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — Fitness Coach</title>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 32px;
+    }
+    .login-card h1 {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .login-card p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    .login-card label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .login-card input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+    .login-card input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .login-card .btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+    }
+    .login-error {
+      background: #fef2f2;
+      color: var(--danger);
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 16px;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>Вход в систему</h1>
+      <p>Fitness Coach — дашборд и трекер</p>
+      <div id="loginError" class="login-error" role="alert"></div>
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email" placeholder="gladkovny@gmail.com">
+        <label for="password">Пароль</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+        <button type="submit" class="btn btn-primary" id="submitBtn">Войти</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/supabase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const form = document.getElementById('loginForm');
+    const errorEl = document.getElementById('loginError');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function showError(msg) {
+      errorEl.textContent = msg || '';
+      errorEl.classList.toggle('visible', !!msg);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showError('');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Вход…';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showError(error.message === 'Invalid login credentials' ? 'Неверный email или пароль.' : error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Войти';
+        return;
+      }
+
+      // Успех — редирект на дашборд
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || 'dashboard/index.html';
+      window.location.href = redirect;
+    });
+  </script>
+</body>
+</html>

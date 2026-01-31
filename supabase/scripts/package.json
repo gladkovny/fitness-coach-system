@@ -1,0 +1,17 @@
+{
+  "name": "fitness-coach-migrate",
+  "version": "1.0.0",
+  "description": "Миграция данных Google Sheets → Supabase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node migrate.js",
+    "migrate:dry": "DRY_RUN=1 node migrate.js",
+    "setup-auth": "node setup_auth.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "googleapis": "^128.0.0"
+  }
+}

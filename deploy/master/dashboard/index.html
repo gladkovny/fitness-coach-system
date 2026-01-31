@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Прогресс тренировок</title>
+  
+  <!-- Общие стили -->
+  <link rel="stylesheet" href="../css/common.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Специфичные стили для дашборда -->
+  <style>
+    /* Прогресс блока */
+    .block-stats { display: flex; align-items: center; gap: 20px; }
+    
+    .block-circle { width: 80px; height: 80px; position: relative; }
+    .block-circle svg { transform: rotate(-90deg); width: 80px; height: 80px; }
+    .block-circle-bg { fill: none; stroke: var(--bg); stroke-width: 6; }
+    .block-circle-fill { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
+    .block-number { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: 700; }
+    
+    .block-info { flex: 1; }
+    .block-label { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .block-sublabel { font-size: 13px; color: var(--text-secondary); }
+    
+    /* Цели */
+    .goals-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .goal-tag { background: var(--accent-light); color: var(--accent); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+    
+    /* Мышечные группы */
+    .muscle-groups { display: flex; flex-direction: column; gap: 12px; }
+    .muscle-group { background: var(--bg); border-radius: 12px; overflow: hidden; }
+    .muscle-group-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; }
+    .muscle-group-header:hover { background: rgba(0,0,0,0.02); }
+    .muscle-group-name { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+    .muscle-group-icon { font-size: 20px; }
+    .muscle-group-stats { display: flex; align-items: center; gap: 12px; }
+    .muscle-group-sets { font-size: 14px; color: var(--text-secondary); }
+    .muscle-group-bar { width: 60px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .muscle-group-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+    .muscle-group-arrow { color: var(--text-secondary); transition: transform 0.2s; }
+    .muscle-group.expanded .muscle-group-arrow { transform: rotate(180deg); }
+    .muscle-details { display: none; padding: 0 16px 14px; }
+    .muscle-group.expanded .muscle-details { display: block; }
+    .muscle-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+    .muscle-name { font-size: 14px; color: var(--text-secondary); }
+    .muscle-value { font-size: 14px; font-weight: 500; }
+    
+    /* Сравнение недель */
+    .weeks-comparison { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .week-card { background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
+    .week-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .week-value { font-size: 24px; font-weight: 700; }
+    .week-subvalue { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .week-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 8px; }
+    .week-change.up { background: #d4edda; color: #155724; }
+    .week-change.down { background: #f8d7da; color: #721c24; }
+    .week-change.same { background: var(--border); color: var(--text-secondary); }
+    
+    /* Прогресс */
+    .progress-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .progress-item:last-child { border-bottom: none; }
+    .progress-info { flex: 1; }
+    .progress-name { font-weight: 600; font-size: 15px; }
+    .progress-date { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .progress-values { text-align: right; }
+    .progress-weight { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .progress-change { font-size: 12px; color: var(--success); font-weight: 500; }
+    
+    /* Тренировки */
+    .session-item { padding: 14px; background: var(--bg); border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .session-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .session-item:last-child { margin-bottom: 0; }
+    .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .session-date { font-weight: 600; font-size: 15px; }
+    .session-type { font-size: 13px; color: var(--accent); font-weight: 500; }
+    .session-stats { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); }
+    .session-stat { display: flex; align-items: center; gap: 4px; }
+    
+    /* Рекорды */
+    .record-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg); border-radius: 12px; margin-bottom: 10px; }
+    .record-type { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .record-name { font-weight: 600; font-size: 15px; margin-top: 2px; }
+    .record-value-container { text-align: right; }
+    .record-value { font-size: 20px; font-weight: 700; color: var(--accent); }
+    .record-date { font-size: 12px; color: var(--text-secondary); }
+    
+    /* Модальное окно тренировки */
+    .modal-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .modal-stat { background: var(--bg); border-radius: 12px; padding: 12px; text-align: center; }
+    .modal-stat-value { font-size: 20px; font-weight: 700; }
+    .modal-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    .modal-exercise-list { list-style: none; }
+    .modal-exercise { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .modal-exercise:last-child { border-bottom: none; }
+    .modal-exercise-name { font-size: 14px; flex: 1; }
+    .modal-exercise-detail { font-size: 14px; color: var(--text-secondary); text-align: right; }
+    
+    /* График */
+    .chart-container { height: 220px; position: relative; }
+    
+    /* Страницы */
+    .history-page, .records-page { display: none; }
+    .history-page.active, .records-page.active { display: block; }
+    .main-page { display: block; }
+    .main-page.hidden { display: none; }
+    
+    /* Выбор клиента */
+    .client-picker-wrap { min-height: 100vh; padding: 24px; display: flex; flex-direction: column; align-items: center; }
+    .client-picker-wrap h2 { margin-bottom: 8px; }
+    .client-picker-desc { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+    .client-picker-list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .client-picker-item { background: var(--card); padding: 16px; border-radius: var(--radius-md); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); transition: transform 0.2s; }
+    .client-picker-item:hover { transform: translateY(-2px); }
+    .client-picker-name { font-weight: 600; }
+    .client-picker-status { font-size: 12px; color: var(--text-secondary); }
+    .header-client-select { font-size: 13px; color: var(--text-secondary); margin-top: 4px; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Загрузка...</div>
+    </div>
+  </div>
+
+  <!-- Общие модули -->
+  <script src="../js/supabase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/api.js"></script>
+  
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    // SUPABASE & AUTH
+    // ═══════════════════════════════════════════════════════════
+    
+    const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    let clientsList = [];
+    let programsList = [];
+    
+    async function requireAuth() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        window.location.href = '../login.html?redirect=' + encodeURIComponent('dashboard/index.html');
+        return false;
+      }
+      return true;
+    }
+    
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = '../login.html';
+    }
+    
+    async function loadClientsFromSupabase() {
+      const { data: list, error } = await supabaseClient
+        .from('clients')
+        .select('id, name, email, status')
+        .order('name');
+      if (error) throw error;
+      return list || [];
+    }
+    
+    async function loadProgramsFromSupabase(clientId) {
+      const { data: list, error } = await supabaseClient
+        .from('programs')
+        .select('id, name, type, status')
+        .eq('client_id', clientId)
+        .order('name');
+      if (error) throw error;
+      return list || [];
+    }
+    
+    async function loadDashboardFromSupabase(clientId) {
+      const [{ data: client, error: clientErr }, { data: sessions, error: sessionsErr }] = await Promise.all([
+        supabaseClient.from('clients').select('id, name, profile').eq('id', clientId).single(),
+        supabaseClient.from('workout_sessions').select('id, date, type, status, notes, total_tonnage, block_id')
+          .eq('client_id', clientId).order('date', { ascending: false }).limit(15)
+      ]);
+      if (clientErr || !client) throw clientErr || new Error('Клиент не найден');
+      
+      const profile = client.profile || {};
+      const goals = {
+        clientName: client.name,
+        startDate: profile.startDate || profile.start_date || '',
+        mainGoals: profile.mainGoals || profile.main_goals || ''
+      };
+      
+      let blocks = [];
+      const { data: programs } = await supabaseClient.from('programs').select('id').eq('client_id', clientId);
+      if (programs?.length) {
+        const { data: blocksData } = await supabaseClient.from('training_blocks')
+          .select('id, name, total_sessions, used_sessions, start_date, status')
+          .in('program_id', programs.map(p => p.id))
+          .order('start_date', { ascending: false });
+        blocks = blocksData || [];
+      }
+      
+      const activeBlock = blocks.find(b => b.status === 'active') || blocks[0];
+      const currentBlock = activeBlock ? {
+        blockId: 1,
+        blockNumber: 1,
+        totalSessions: activeBlock.total_sessions || 0,
+        usedSessions: activeBlock.used_sessions || 0,
+        remaining: Math.max(0, (activeBlock.total_sessions || 0) - (activeBlock.used_sessions || 0)),
+        progress: activeBlock.total_sessions ? Math.round(((activeBlock.used_sessions || 0) / activeBlock.total_sessions) * 100) : 0,
+        status: activeBlock.status || 'active'
+      } : { status: 'none' };
+      
+      const sessionIds = (sessions || []).map(s => s.id);
+      let setsBySession = {};
+      if (sessionIds.length) {
+        const { data: sets } = await supabaseClient.from('workout_sets')
+          .select('session_id, reps, weight, exercise_id')
+          .in('session_id', sessionIds);
+        const exIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
+        const { data: exercises } = exIds.length ? await supabaseClient.from('exercises').select('id, name, category') : { data: [] };
+        const exMap = (exercises || []).reduce((acc, e) => { acc[e.id] = e.name; return acc; }, {});
+        const exCategoryMap = (exercises || []).reduce((acc, e) => { acc[e.id] = (e.category || '').toLowerCase(); return acc; }, {});
+        (sets || []).forEach(set => {
+          if (!setsBySession[set.session_id]) setsBySession[set.session_id] = {};
+          const key = set.exercise_id || 'unknown';
+          if (!setsBySession[set.session_id][key]) {
+            setsBySession[set.session_id][key] = { name: exMap[set.exercise_id] || 'Упражнение', sets: 0, reps: set.reps, weight: set.weight };
+          }
+          setsBySession[set.session_id][key].sets += 1;
+          setsBySession[set.session_id][key].reps = set.reps;
+          setsBySession[set.session_id][key].weight = set.weight;
+        });
+        Object.keys(setsBySession).forEach(sid => {
+          setsBySession[sid] = Object.values(setsBySession[sid]);
+        });
+      }
+      
+      const recentSessions = (sessions || []).map(s => {
+        const exercises = setsBySession[s.id] || [];
+        const totalVolume = exercises.reduce((sum, ex) => sum + (Number(ex.weight) || 0) * (Number(ex.reps) || 0), 0);
+        return {
+          sessionId: s.id,
+          date: s.date,
+          type: s.type || 'Тренировка',
+          splitType: s.type || '',
+          totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : Math.round(totalVolume),
+          exerciseCount: exercises.length,
+          totalSets: exercises.length,
+          exercises,
+          notes: s.notes
+        };
+      });
+      
+      const now = new Date();
+      const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay());
+      const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      let thisWeekCount = 0, thisWeekVol = 0, lastWeekCount = 0, lastWeekVol = 0;
+      (sessions || []).forEach(s => {
+        const d = new Date(s.date);
+        const vol = s.total_tonnage != null ? Number(s.total_tonnage) : 0;
+        if (d >= thisWeekStart) { thisWeekCount++; thisWeekVol += vol; }
+        else if (d >= lastWeekStart && d < thisWeekStart) { lastWeekCount++; lastWeekVol += vol; }
+      });
+      
+      return {
+        success: true,
+        clientId,
+        period: currentPeriod,
+        generatedAt: new Date().toISOString(),
+        profile: { name: client.name },
+        goals,
+        currentBlock,
+        recentSessions,
+        exerciseProgress: { improvements: [] },
+        muscleLoad: { groups: {} },
+        weeklyComparison: {
+          thisWeek: { count: thisWeekCount, volume: thisWeekVol },
+          lastWeek: { count: lastWeekCount, volume: lastWeekVol },
+          changes: { count: thisWeekCount - lastWeekCount, volumePercent: lastWeekVol ? Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100) : 0 }
+        }
+      };
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════
+    
+    let data = null;
+    let currentPage = 'main';
+    let currentPeriod = 'block';
+    let tonnageChart = null;
+    let selectedClientId = null;
+    
+    // Демо-данные для локального тестирования
+    const DEMO_DATA = {
+      success: true,
+      clientId: 'demo',
+      period: 'block',
+      generatedAt: new Date().toISOString(),
+      profile: { name: 'Тестовый клиент' },
+      goals: { clientName: 'Демо Клиент', startDate: '2026-01-08', mainGoals: 'ОФП, Подтягивания 15 раз, Коррекция осанки' },
+      currentBlock: { blockId: 1, blockNumber: 1, totalSessions: 10, usedSessions: 3, remaining: 7, progress: 30, status: 'active' },
+      recentSessions: [
+        { sessionId: 'S001', date: '2026-01-24', type: 'Тренировка', splitType: 'Push', duration: 60, exerciseCount: 6, totalSets: 11, totalVolume: 1100, exercises: [
+          { name: 'Жим гантелей лёжа', sets: 3, reps: 10, weight: 12.5 },
+          { name: 'Жим ногами', sets: 2, reps: 12, weight: 30 }
+        ]},
+        { sessionId: 'S002', date: '2026-01-21', type: 'Тренировка', splitType: 'Pull', duration: 55, exerciseCount: 5, totalSets: 10, totalVolume: 950, exercises: [] },
+        { sessionId: 'S003', date: '2026-01-19', type: 'Тренировка', splitType: 'Legs', duration: 50, exerciseCount: 4, totalSets: 9, totalVolume: 1200, exercises: [] }
+      ],
+      exerciseProgress: {
+        improvements: [
+          { name: 'Жим гантелей лёжа', currentWeight: 12.5, firstWeight: 7.5, progressKg: 5, progressPercent: 67, lastDate: '2026-01-24' },
+          { name: 'Жим ногами', currentWeight: 30, firstWeight: 20, progressKg: 10, progressPercent: 50, lastDate: '2026-01-19' }
+        ]
+      },
+      muscleLoad: {
+        groups: {
+          legs: { name: 'Ноги', totalSets: 8.5, muscles: { quads: { sets: 4 }, hamstrings: { sets: 2 }, glutes: { sets: 2 }, calves: { sets: 0.5 } }},
+          back: { name: 'Спина', totalSets: 9, muscles: { lats: { sets: 6 }, traps: { sets: 2 }, low_back: { sets: 1 } }},
+          chest: { name: 'Грудь', totalSets: 4, muscles: { chest: { sets: 4 } }},
+          arms: { name: 'Руки и плечи', totalSets: 8, muscles: { biceps: { sets: 2 }, triceps: { sets: 2 }, front_delt: { sets: 2 }, mid_delt: { sets: 1 }, rear_delt: { sets: 1 } }}
+        }
+      },
+      weeklyComparison: {
+        thisWeek: { count: 2, volume: 2050 },
+        lastWeek: { count: 2, volume: 2000 },
+        changes: { count: 0, volumePercent: 2 }
+      }
+    };
+    
+    // ═══════════════════════════════════════════════════════════
+    // MAIN
+    // ═══════════════════════════════════════════════════════════
+    
+    async function loadDashboard() {
+      if (DEMO_MODE) {
+        data = DEMO_DATA;
+        renderApp();
+        return;
+      }
+      
+      if (!selectedClientId) {
+        showClientPicker();
+        return;
+      }
+      
+      try {
+        data = await loadDashboardFromSupabase(selectedClientId);
+        API_CONFIG.CLIENT_ID = selectedClientId;
+        renderApp();
+        cacheData(`dashboard_${selectedClientId}`, data);
+      } catch (error) {
+        const cached = getCachedData(`dashboard_${selectedClientId}`);
+        if (cached) { data = cached; renderApp(); }
+        else { showError('Ошибка загрузки: ' + (error.message || error)); }
+      }
+    }
+    
+    function showClientPicker() {
+      const list = clientsList.map(c => `
+        <div class="client-picker-item" onclick="selectClient('${c.id}')">
+          <span class="client-picker-name">${c.name}</span>
+          ${c.status ? `<span class="client-picker-status">${c.status}</span>` : ''}
+        </div>
+      `).join('');
+      document.getElementById('app').innerHTML = `
+        <div class="client-picker-wrap">
+          <h2>Выберите клиента</h2>
+          <p class="client-picker-desc">Данные загружаются из Supabase</p>
+          <div class="client-picker-list">${list.length ? list : '<div class="empty-state">Нет клиентов</div>'}</div>
+          <button class="btn btn-secondary" onclick="handleLogout()">Выйти</button>
+        </div>
+      `;
+    }
+    
+    async function selectClient(clientId) {
+      selectedClientId = clientId;
+      try { localStorage.setItem('dashboard_client_id', clientId); } catch (e) {}
+      programsList = await loadProgramsFromSupabase(clientId);
+      await loadDashboard();
+    }
+    
+    function switchClient() {
+      selectedClientId = null;
+      try { localStorage.removeItem('dashboard_client_id'); } catch (e) {}
+      showClientPicker();
+    }
+    
+    function renderApp() {
+      const clientName = data.goals?.clientName || data.profile?.name || 'Клиент';
+      const startDate = data.goals?.startDate || '';
+      
+      // Debug panel
+      const debugPanel = DEBUG_MODE ? `
+        <div style="margin: 16px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 11px;">
+          <strong>🔍 DEBUG</strong> ${DEMO_MODE ? '(DEMO)' : '(API)'}
+          <pre style="margin-top: 8px; font-size: 10px;">${JSON.stringify(data.muscleLoad?.groups, null, 2)?.slice(0, 500)}</pre>
+        </div>
+      ` : '';
+      
+      document.getElementById('app').innerHTML = `
+        <header class="header">
+          <div class="header-top">
+            <div>
+              <h1>${clientName}</h1>
+              ${startDate ? `<div class="start-date">С ${formatDateFull(startDate)}</div>` : ''}
+              <div class="header-client-select" onclick="switchClient()">Сменить клиента</div>
+            </div>
+            <button class="settings-btn" onclick="showSettingsModal()">${ICONS.gear}</button>
+          </div>
+        </header>
+        
+        ${debugPanel}
+        
+        <main class="main-page" id="mainPage">
+          ${renderBlockProgress()}
+          ${renderGoals()}
+          ${renderMuscleLoad()}
+          ${renderWeeklyComparison()}
+          ${renderProgress()}
+          ${renderRecentSessions()}
+        </main>
+        
+        <main class="history-page" id="historyPage">
+          ${renderHistoryPage()}
+        </main>
+        
+        <main class="records-page" id="recordsPage">
+          ${renderRecordsPage()}
+        </main>
+        
+        <nav class="bottom-nav">
+          <div class="nav-item active" onclick="showPage('main')"><span class="nav-icon">${ICONS.chart}</span>Главная</div>
+          <div class="nav-item" onclick="showPage('history')"><span class="nav-icon">${ICONS.chartUp}</span>История</div>
+          <div class="nav-item" onclick="showPage('records')"><span class="nav-icon">${ICONS.trophy}</span>Рекорды</div>
+        </nav>
+        
+        <div class="modal-overlay" id="sessionModal" onclick="if(event.target===this)closeModal('sessionModal')"></div>
+        <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
+      `;
+      
+      if (currentPage === 'history') {
+        document.getElementById('historyPage').classList.add('active');
+        document.getElementById('mainPage').classList.add('hidden');
+        setTimeout(initTonnageChart, 100);
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // RENDER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════
+    
+    function renderBlockProgress() {
+      const block = data.currentBlock;
+      if (!block || block.status === 'none') {
+        return `<div class="card"><div class="card-title">${ICONS.block} БЛОК</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.block}</div>Нет активного блока</div></div>`;
+      }
+      
+      const circumference = 2 * Math.PI * 35;
+      const offset = circumference - (block.progress / 100) * circumference;
+      
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.block} БЛОК ${block.blockId || 1}</span></div>
+          <div class="block-stats">
+            <div class="block-circle">
+              <svg viewBox="0 0 80 80">
+                <circle class="block-circle-bg" cx="40" cy="40" r="35"/>
+                <circle class="block-circle-fill" cx="40" cy="40" r="35" 
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+              </svg>
+              <div class="block-number">${block.usedSessions}</div>
+            </div>
+            <div class="block-info">
+              <div class="block-label">${block.usedSessions} из ${block.totalSessions} тренировок</div>
+              <div class="block-sublabel">${block.remaining > 0 ? `Осталось ${block.remaining}` : ICONS.party + ' Завершён!'}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function renderGoals() {
+      const goalsText = data.goals?.mainGoals || '';
+      if (!goalsText) return '';
+      
+      const goals = goalsText.split(/[.,]/).map(g => g.trim()).filter(g => g.length > 2);
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.target} ЦЕЛИ</span></div>
+          <div class="goals-list">${goals.map(g => `<span class="goal-tag">${g}</span>`).join('')}</div>
+        </div>
+      `;
+    }
+    
+    function renderMuscleLoad() {
+      const muscleLoad = data.muscleLoad;
+      const heatmap = data.muscleHeatmap;
+      
+      const hasMuscleLoadData = muscleLoad?.groups && Object.keys(muscleLoad.groups).length > 0;
+      const hasHeatmapData = heatmap?.muscles && Object.keys(heatmap.muscles).length > 0;
+      
+      if (!hasMuscleLoadData && !hasHeatmapData) {
+        return `<div class="card"><div class="card-title">${ICONS.muscle} НАГРУЗКА</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.muscle}</div>Нет данных</div></div>`;
+      }
+      
+      const groupDefs = {
+        legs: { name: 'Ноги', icon: ICONS.leg, color: '#007aff', muscles: ['quads', 'hamstrings', 'glutes', 'calves'], labels: { quads: 'Квадрицепс', hamstrings: 'Бицепс бедра', glutes: 'Ягодицы', calves: 'Икры' }},
+        back: { name: 'Спина', icon: ICONS.back, color: '#5856d6', muscles: ['lats', 'traps', 'low_back'], labels: { lats: 'Широчайшие', traps: 'Трапеция', low_back: 'Поясница' }},
+        chest: { name: 'Грудь', icon: ICONS.chest, color: '#ff2d55', muscles: ['chest'], labels: { chest: 'Грудь' }},
+        arms: { name: 'Руки и плечи', icon: ICONS.muscle, color: '#ff9500', muscles: ['biceps', 'triceps', 'front_delt', 'mid_delt', 'rear_delt'], labels: { biceps: 'Бицепс', triceps: 'Трицепс', front_delt: 'Передняя дельта', mid_delt: 'Средняя дельта', rear_delt: 'Задняя дельта' }}
+      };
+      
+      let maxGroupSets = 0;
+      const groups = {};
+      
+      if (hasMuscleLoadData) {
+        for (const [key, groupData] of Object.entries(muscleLoad.groups)) {
+          const def = groupDefs[key];
+          if (!def) continue;
+          groups[key] = { ...def, totalSets: groupData.totalSets || 0, muscleData: groupData.muscles || {} };
+          maxGroupSets = Math.max(maxGroupSets, groups[key].totalSets);
+        }
+      }
+      
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">${ICONS.muscle} НАГРУЗКА</span>
+            <div class="period-selector">
+              <button class="period-btn ${currentPeriod === 'block' ? 'active' : ''}" onclick="setPeriod('block')">Блок</button>
+              <button class="period-btn ${currentPeriod === '3m' ? 'active' : ''}" onclick="setPeriod('3m')">3 мес</button>
+              <button class="period-btn ${currentPeriod === 'all' ? 'active' : ''}" onclick="setPeriod('all')">Всё</button>
+            </div>
+          </div>
+          <div class="muscle-groups">
+            ${Object.entries(groups).sort((a, b) => b[1].totalSets - a[1].totalSets).map(([key, group]) => {
+              const width = maxGroupSets > 0 ? (group.totalSets / maxGroupSets) * 100 : 0;
+              return `
+                <div class="muscle-group" id="group-${key}">
+                  <div class="muscle-group-header" onclick="toggleMuscleGroup('${key}')">
+                    <div class="muscle-group-name"><span class="muscle-group-icon">${group.icon}</span>${group.name}</div>
+                    <div class="muscle-group-stats">
+                      <span class="muscle-group-sets">${round(group.totalSets)} подх.</span>
+                      <div class="muscle-group-bar"><div class="muscle-group-fill" style="width: ${width}%; background: ${group.color}"></div></div>
+                      <span class="muscle-group-arrow">▼</span>
+                    </div>
+                  </div>
+                  <div class="muscle-details">
+                    ${group.muscles.map(m => {
+                      const sets = group.muscleData[m]?.sets || 0;
+                      return `<div class="muscle-item"><span class="muscle-name">${group.labels[m]}</span><span class="muscle-value">${round(sets)}</span></div>`;
+                    }).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+    
+    function renderWeeklyComparison() {
+      const apiComparison = data.weeklyComparison;
+      
+      let thisWeek = apiComparison?.thisWeek || { count: 0, volume: 0 };
+      let lastWeek = apiComparison?.lastWeek || { count: 0, volume: 0 };
+      let countChange = apiComparison?.changes?.count || (thisWeek.count - lastWeek.count);
+      let volumeChange = apiComparison?.changes?.volumePercent || 0;
+      
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.chart} НЕДЕЛЯ VS ПРОШЛАЯ</span></div>
+          <div class="weeks-comparison">
+            <div class="week-card">
+              <div class="week-label">Тренировок</div>
+              <div class="week-value">${thisWeek.count}</div>
+              <div class="week-subvalue">прошлая: ${lastWeek.count}</div>
+              <div class="week-change ${countChange > 0 ? 'up' : countChange < 0 ? 'down' : 'same'}">${countChange > 0 ? '↑' : countChange < 0 ? '↓' : '='} ${Math.abs(countChange)}</div>
+            </div>
+            <div class="week-card">
+              <div class="week-label">Тоннаж (кг)</div>
+              <div class="week-value">${formatNumber(thisWeek.volume)}</div>
+              <div class="week-subvalue">прошлая: ${formatNumber(lastWeek.volume)}</div>
+              <div class="week-change ${volumeChange > 0 ? 'up' : volumeChange < 0 ? 'down' : 'same'}">${volumeChange > 0 ? '↑' : volumeChange < 0 ? '↓' : ''} ${Math.abs(volumeChange)}%</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    function renderProgress() {
+      const progress = data.exerciseProgress?.improvements || data.exerciseProgress?.topExercises || [];
+      const improved = progress.filter(ex => (ex.progressPercent || ex.progress) > 0);
+      
+      if (!improved.length) {
+        return `<div class="card"><div class="card-title">${ICONS.rocket} ПРОГРЕСС</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.rocket}</div>Пока нет рекордов</div></div>`;
+      }
+      
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.rocket} ПРОГРЕСС</span></div>
+          ${improved.slice(0, 5).map(ex => `
+            <div class="progress-item">
+              <div class="progress-info">
+                <div class="progress-name">${ex.name}</div>
+                <div class="progress-date">${ICONS.calendar} ${ex.lastDate || 'недавно'}</div>
+              </div>
+              <div class="progress-values">
+                <div class="progress-weight">${ex.currentWeight || ex.lastWeight} кг</div>
+                <div class="progress-change">+${ex.progressKg || 0} кг (+${ex.progressPercent || ex.progress}%)</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    function renderRecentSessions() {
+      const sessions = data.recentSessions || [];
+      
+      if (!sessions.length) {
+        return `<div class="card"><div class="card-title">${ICONS.calendar} ТРЕНИРОВКИ</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.calendar}</div>Нет тренировок</div></div>`;
+      }
+      
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.calendar} ПОСЛЕДНИЕ ТРЕНИРОВКИ</span></div>
+          ${sessions.slice(0, 3).map((s, i) => `
+            <div class="session-item" onclick="showSessionModal(${i})">
+              <div class="session-header">
+                <span class="session-date">${formatDate(s.date)}</span>
+                <span class="session-type">${s.splitType || s.type || 'Тренировка'}</span>
+              </div>
+              <div class="session-stats">
+                <span class="session-stat">${ICONS.weight} ${s.exerciseCount || 0} упр.</span>
+                <span class="session-stat">${ICONS.chart} ${s.totalSets || 0} подх.</span>
+                <span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    function renderHistoryPage() {
+      const sessions = data.recentSessions || [];
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.chartUp} ТОННАЖ</span></div>
+          <div class="chart-container"><canvas id="tonnageChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.clipboard} ВСЕ ТРЕНИРОВКИ</span></div>
+          ${sessions.map((s, i) => `
+            <div class="session-item" onclick="showSessionModal(${i})">
+              <div class="session-header"><span class="session-date">${formatDate(s.date)}</span><span class="session-type">${s.splitType || ''}</span></div>
+              <div class="session-stats"><span class="session-stat">${ICONS.weight} ${s.exerciseCount || 0} упр.</span><span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span></div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    function renderRecordsPage() {
+      const progress = data.exerciseProgress?.improvements || [];
+      const records = progress.filter(p => (p.progressPercent || p.progress) > 0).map(p => ({
+        type: 'Прогресс', name: p.name, value: `${p.currentWeight || p.lastWeight} кг`, date: p.lastDate, change: `+${p.progressKg} кг`
+      }));
+      
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">${ICONS.trophy} РЕКОРДЫ</span></div>
+          ${records.length ? records.map(r => `
+            <div class="record-item">
+              <div><div class="record-type">${r.type}</div><div class="record-name">${r.name}</div></div>
+              <div class="record-value-container"><div class="record-value">${r.value}</div><div class="record-date">${r.date || ''} • ${r.change}</div></div>
+            </div>
+          `).join('') : `<div class="empty-state"><div class="empty-icon">${ICONS.trophy}</div>Пока нет рекордов</div>`}
+        </div>
+      `;
+    }
+    
+    // ═══════════════════════════════════════════════════════════
+    // INTERACTIONS
+    // ═══════════════════════════════════════════════════════════
+    
+    function toggleMuscleGroup(key) {
+      document.getElementById(`group-${key}`).classList.toggle('expanded');
+    }
+    
+    async function setPeriod(period) {
+      currentPeriod = period;
+      await loadDashboard();
+    }
+    
+    function showPage(page) {
+      currentPage = page;
+      document.querySelectorAll('.nav-item').forEach((item, i) => {
+        item.classList.toggle('active', ['main', 'history', 'records'][i] === page);
+      });
+      document.getElementById('mainPage').classList.toggle('hidden', page !== 'main');
+      document.getElementById('historyPage').classList.toggle('active', page === 'history');
+      document.getElementById('recordsPage').classList.toggle('active', page === 'records');
+      if (page === 'history') setTimeout(initTonnageChart, 100);
+    }
+    
+    function showSessionModal(index) {
+      const s = data.recentSessions[index];
+      if (!s) return;
+      const exercises = s.exercises || [];
+      
+      document.getElementById('sessionModal').innerHTML = `
+        <div class="modal">
+          <div class="modal-handle"></div>
+          <h2>${formatDate(s.date)}</h2>
+          <div class="modal-subtitle">${s.splitType || s.type || 'Тренировка'}</div>
+          <div class="modal-section">
+            <div class="modal-stat-grid">
+              <div class="modal-stat"><div class="modal-stat-value">${s.exerciseCount || exercises.length || 0}</div><div class="modal-stat-label">Упражнений</div></div>
+              <div class="modal-stat"><div class="modal-stat-value">${s.totalSets || 0}</div><div class="modal-stat-label">Подходов</div></div>
+              <div class="modal-stat"><div class="modal-stat-value">${formatNumber(s.totalVolume || 0)}</div><div class="modal-stat-label">Тоннаж</div></div>
+            </div>
+          </div>
+          ${exercises.length ? `<div class="modal-section"><div class="modal-section-title">${ICONS.weight} УПРАЖНЕНИЯ</div>
+            <div class="modal-exercise-list">${exercises.map(ex => `<div class="modal-exercise"><span class="modal-exercise-name">${ex.name}</span><span class="modal-exercise-detail">${ex.sets || 0}×${ex.reps || 0} • ${ex.weight || 0} кг</span></div>`).join('')}</div></div>` : ''}
+          ${s.notes ? `<div class="modal-section"><div class="modal-section-title">ЗАМЕТКИ</div><div style="padding: 12px; background: var(--bg); border-radius: 8px;">${s.notes}</div></div>` : ''}
+        </div>
+      `;
+      document.getElementById('sessionModal').classList.add('active');
+    }
+    
+    function showSettingsModal() {
+      document.getElementById('settingsModal').innerHTML = `
+        <div class="modal settings-modal">
+          <h2>${ICONS.gear} Настройки</h2>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Данные загружаются из Supabase. Клиент выбран в дашборде.</p>
+          <label>Текущий клиент</label>
+          <input type="text" id="clientIdInput" value="${selectedClientId || ''}" readonly style="opacity: 0.8;">
+          <div class="modal-buttons">
+            <button class="btn-cancel" onclick="closeModal('settingsModal')">Закрыть</button>
+            <button class="btn-secondary" onclick="handleLogout()">Выйти</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('settingsModal').classList.add('active');
+    }
+    
+    function saveSettingsAndReload() {
+      API_CONFIG.URL = document.getElementById('apiUrlInput').value.trim();
+      API_CONFIG.CLIENT_ID = document.getElementById('clientIdInput').value.trim() || 'yaroslav';
+      closeModal('settingsModal');
+      loadDashboard();
+    }
+    
+    function initTonnageChart() {
+      const canvas = document.getElementById('tonnageChart');
+      if (!canvas) return;
+      
+      const sessions = (data.recentSessions || []).slice(0, 10).reverse();
+      if (tonnageChart) tonnageChart.destroy();
+      
+      tonnageChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: sessions.map(s => formatDate(s.date)),
+          datasets: [{
+            label: 'Тоннаж (кг)',
+            data: sessions.map(s => s.totalVolume || 0),
+            borderColor: '#0071e3',
+            backgroundColor: 'rgba(0, 113, 227, 0.1)',
+            borderWidth: 2,
+            pointRadius: 5,
+            pointBackgroundColor: '#0071e3',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#e5e5e5' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+    
+    function showSetupScreen() {
+      document.getElementById('app').innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 20px;">${ICONS.gear}</div>
+          <h2>Настройте подключение</h2>
+          <p style="color: var(--text-secondary); margin: 12px 0 24px;">Укажите URL API и ID клиента</p>
+          <button onclick="showSettingsModal()" class="btn btn-primary" style="width: auto; padding: 16px 32px;">Настроить</button>
+        </div>
+        <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
+      `;
+    }
+    
+    function showError(msg) {
+      document.getElementById('app').innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px; text-align: center;">
+          <div style="font-size: 48px; margin-bottom: 16px;">${ICONS.sad}</div>
+          <div style="color: var(--danger); margin-bottom: 8px;">Ошибка</div>
+          <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">${msg}</div>
+          <button onclick="loadDashboard()" class="btn btn-primary" style="width: auto;">Обновить</button>
+        </div>
+        <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
+      `;
+    }
+    
+    // Init: проверка сессии → загрузка клиентов → выбор клиента или дашборд
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!(await requireAuth())) return;
+      try {
+        clientsList = await loadClientsFromSupabase();
+        selectedClientId = localStorage.getItem('dashboard_client_id') || null;
+        if (selectedClientId && clientsList.some(c => c.id === selectedClientId)) {
+          programsList = await loadProgramsFromSupabase(selectedClientId);
+          await loadDashboard();
+        } else {
+          selectedClientId = null;
+          if (clientsList.length === 0) showClientPicker();
+          else showClientPicker();
+        }
+      } catch (e) {
+        showError('Ошибка: ' + (e.message || e));
+      }
+    });
+  </script>
+</body>
+</html>

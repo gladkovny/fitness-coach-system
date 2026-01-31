@@ -1,22 +1,70 @@
 # FITNESS COACH SYSTEM — Cursor Rules
 
 ## О проекте
-Коробочная SaaS-система для фитнес-тренеров. Владелец: Николай (Бали).
+Коробочная SaaS-система для фитнес-тренеров. Владелец: Николай (не программист, работает с AI).
+
+**Полные правила (обязательно при изменениях кода):** `docs/cursorrules_v2.1.md` — 7 разделов системы, два контура (Master/Supabase и Mark/GAS), формат ответов, риски, откат. Для Claude: `docs/CLAUDE_RULES_V2.1.md`. Текущий статус: `docs/SYNC_STATUS.md`.
+
+**При любом изменении кода указывать:** затронутые разделы [1]–[7], контур (Master или Mark), риски, чек-лист проверки.
+
+**Два контура:** Master (Supabase) — deploy/master: login, dashboard, tracker. Mark (GAS) — deploy/mark: dashboard, program. Идёт переход на Supabase (Фаза 2).
+
+## Структура проекта
+```
+src/                — Frontend (HTML/CSS/JS)
+├── dashboard/        — Дашборд офлайн клиентов
+├── tracker/          — Трекер тренера + Assessment
+├── online/           — Модули для онлайн клиентов
+│   ├── dashboard/      — Дашборд Марка (90 дней)
+│   └── program/        — Программа тренировок
+├── css/common.css    — Общие стили
+└── js/               — Общие модули
+    ├── api.js          — API функции
+    └── utils.js        — Утилиты
+
+gas/                — Google Apps Script (Backend)
+├── Master API_assessment.gs  — Основной API v6.6.1
+├── online_API_v4.gs          — API для онлайн (Марк)
+└── ONBOARDING_V2.gs          — Онбординг
+
+docs/               — Документация
+├── API.md            — API Reference
+├── CURRENT_STATE_v5.md
+├── cursorrules_v2.1.md   — правила для Cursor (7 разделов, 2 контура)
+├── CLAUDE_RULES_V2.1.md  — правила для Claude
+└── SYNC_STATUS.md       — текущий статус
+```
 
 ## Технологии
-- Backend: Google Apps Script
-- Frontend: Vanilla HTML/CSS/JS
-- Database: Google Sheets
-- Hosting: Netlify
+**Сейчас:** Backend GAS, DB Google Sheets, Frontend Vanilla HTML/CSS/JS, Netlify, Chart.js.
+**Цель (ARCHITECTURE_V2):** Backend Supabase Edge Functions, DB Supabase (PostgreSQL), Frontend React PWA, Auth Supabase, AI OpenAI/Claude.
 
 ## Правила кода
 - Комментарии: РУССКИЙ
 - Переменные: английский (camelCase)
+- Константы: UPPER_SNAKE_CASE
+- Даты: ISO (YYYY-MM-DD)
 - Mobile-first дизайн
 - Кодировка: UTF-8
 
 ## Клиенты
-- Mark (online) — 90 дней
-- Yaroslav (offline) — сплит
-- Kirill (offline) — фулбоди
-- Alena (hybrid) 
+| ID | Тип | Описание |
+|----|-----|----------|
+| mark | online | 90-дневная программа, свой дашборд |
+| yaroslav | offline | Сплит, общий дашборд |
+| kirill | offline | Фулбоди, общий дашборд |
+| alena | hybrid | Тест онбординга |
+
+## Важные паттерны
+- EXPLICIT_EXERCISE_RULES перед fuzzy matching
+- Muscle coefficients с subcategory
+- ensureColumns для автосоздания колонок
+- ISO даты (YYYY-MM-DD)
+
+## При первом обновлении Master API (backlog)
+- Добавить колонку **email** в лист Clients (Coach Master) и заполнить email тренера в строке тренера — для миграции в Supabase (MIGRATION_TRAINER_EMAIL) и будущего API. Подробно: docs/ROADMAP_NEXT_STEPS.md, блок «При первом обновлении Master API».
+
+## Для Claude (режим Проект)
+- Правила: docs/CLAUDE_RULES_V2.1.md — следовать при каждой правке (разделы [1]–[7], контур, риски, чек-лист).
+- После изменений: напоминать выполнить .\scripts\sync-claude.ps1 и при необходимости обновить deploy/master или deploy/mark; при смене этапа — обновить docs/SYNC_STATUS.md.
+- **Напоминание о коммите:** после завершения логичной задачи (фича, фикс, обновление доков) напоминать: «Готово. Стоит закоммитить: .\scripts\git-push.ps1». См. docs/GIT_WORKFLOW.md.

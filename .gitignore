@@ -1,0 +1,29 @@
+# Environment variables
+.env
+supabase/.env
+*.env
+
+# Миграция: конфиг и ключи Google (не коммитить)
+supabase/scripts/config.json
+supabase/scripts/google-credentials.json
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build outputs
+dist/
+build/

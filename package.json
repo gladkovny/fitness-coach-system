@@ -1,0 +1,12 @@
+{
+  "name": "fitness-coach-system",
+  "version": "1.0.0",
+  "description": "Коробочная SaaS-система для фитнес-тренеров",
+  "scripts": {
+    "sync": "node scripts/sync-claude.js",
+    "sync:watch": "node scripts/sync-claude.js && echo 'Watching...' && timeout /t 60 > nul && npm run sync:watch"
+  },
+  "keywords": ["fitness", "coach", "google-apps-script"],
+  "author": "Николай",
+  "license": "UNLICENSED"
+}
