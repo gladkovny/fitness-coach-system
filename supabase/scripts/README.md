@@ -167,6 +167,47 @@ npm run migrate:dry
 
 ---
 
+## Backfill exercise_name (если всё ещё «все в Кор»)
+
+Если после миграции в дашборде НАГРУЗКА показывает все подходы в «Кор», а названия упражнений в истории — «Упражнение», значит в `workout_sets` много записей с `exercise_id = null`. Скрипт **backfill-exercise-names.js** заполняет колонку `exercise_name` из WorkoutLog в Google Sheets.
+
+**Требования:** миграция **00008** выполнена (колонка `exercise_name` добавлена), настроены .env, config.json, GOOGLE_APPLICATION_CREDENTIALS (как для варианта C).
+
+```bash
+cd supabase/scripts
+node backfill-exercise-names.js
+```
+
+Скрипт читает WorkoutLog из таблиц клиентов, матчит по дате сессии и порядку подходов, обновляет `exercise_name` для записей с `exercise_id = null`.
+
+---
+
+## Backfill названий тренировок (type)
+
+Если в модальном окне тренировки отображается только «Тренировка» вместо названия (Спина, Pull и т.п.), запусти скрипт для заполнения `workout_sessions.type` из листа WorkoutSessions (колонки splitType или type):
+
+```bash
+cd supabase/scripts
+node backfill-session-names.js
+```
+
+Скрипт обновляет только записи с пустым `type`. Требования те же: .env, config.json, GOOGLE_APPLICATION_CREDENTIALS, доступ к таблицам клиентов.
+
+---
+
+## Backfill profile (weight, mainGoals) для клиентов
+
+Для корректного расчёта интенсивности bodyweight-упражнений нужен вес клиента в `clients.profile.weight`. Скрипт **backfill-client-profile.js** заполняет `profile` из листа Goals таблиц клиентов:
+
+```bash
+cd supabase/scripts
+node backfill-client-profile.js
+```
+
+Читает Clients с master для маппинга client→spreadsheetId, затем Goals каждого клиента. Обновляет `profile.weight`, `profile.startDate`, `profile.mainGoals`. Требования те же: .env, config.json, coachMasterSpreadsheetId, GOOGLE_APPLICATION_CREDENTIALS.
+
+---
+
 ## Проверка после миграции
 
 - В Supabase **Table Editor**: сравнить количество записей в `trainers`, `clients`, `exercises`, `workout_sessions`, `daily_logs` с ожидаемым.

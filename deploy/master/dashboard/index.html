@@ -177,10 +177,10 @@
     }
     
     async function loadDashboardFromSupabase(clientId) {
-      const [{ data: client, error: clientErr }, { data: sessions, error: sessionsErr }] = await Promise.all([
+      const [{ data: client, error: clientErr }, { data: allSessions, error: sessionsErr }] = await Promise.all([
         supabaseClient.from('clients').select('id, name, profile').eq('id', clientId).single(),
         supabaseClient.from('workout_sessions').select('id, date, type, status, notes, total_tonnage, block_id')
-          .eq('client_id', clientId).order('date', { ascending: false }).limit(15)
+          .eq('client_id', clientId).order('date', { ascending: false }).limit(1000)
       ]);
       if (clientErr || !client) throw clientErr || new Error('Клиент не найден');
       
@@ -212,56 +212,155 @@
         status: activeBlock.status || 'active'
       } : { status: 'none' };
       
-      const sessionIds = (sessions || []).map(s => s.id);
+      const now = new Date();
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 90);
+      const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+      const sessions = (allSessions || []).filter(s => {
+        if (currentPeriod === 'block') {
+          if (!activeBlock?.id) return false;
+          return s.block_id === activeBlock.id;
+        }
+        if (currentPeriod === '3m') return (s.date || '') >= cutoffStr;
+        return true;
+      });
+      const displaySessions = (allSessions || []).slice(0, 15);
+      
+      const sessionIds = sessions.map(s => s.id);
+      const displayIds = displaySessions.map(s => s.id);
+      const allSessionIds = (allSessions || []).map(s => s.id);
+      const idsForSets = [...new Set([...sessionIds, ...displayIds, ...allSessionIds])];
       let setsBySession = {};
-      if (sessionIds.length) {
+      let allSets = [];
+      if (idsForSets.length) {
         const { data: sets } = await supabaseClient.from('workout_sets')
-          .select('session_id, reps, weight, exercise_id')
-          .in('session_id', sessionIds);
-        const exIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
-        const { data: exercises } = exIds.length ? await supabaseClient.from('exercises').select('id, name, category') : { data: [] };
-        const exMap = (exercises || []).reduce((acc, e) => { acc[e.id] = e.name; return acc; }, {});
-        const exCategoryMap = (exercises || []).reduce((acc, e) => { acc[e.id] = (e.category || '').toLowerCase(); return acc; }, {});
-        (sets || []).forEach(set => {
+          .select('session_id, reps, weight, exercise_id, exercise_name, exercises(id, name, category, equipment, muscle_coefficients)')
+          .in('session_id', idsForSets);
+        const fetchedSets = sets || [];
+        allSets = sessionIds.length ? fetchedSets.filter(st => sessionIds.includes(st.session_id)) : [];
+        const displaySets = fetchedSets.filter(st => displayIds.includes(st.session_id));
+        const volumeBySession = {};
+        fetchedSets.forEach(set => {
+          const vol = parseNum(set.weight) * parseNum(set.reps);
+          volumeBySession[set.session_id] = (volumeBySession[set.session_id] || 0) + vol;
+        });
+        displaySets.forEach(set => {
           if (!setsBySession[set.session_id]) setsBySession[set.session_id] = {};
-          const key = set.exercise_id || 'unknown';
+          const exData = (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) || (set.exercise && typeof set.exercise === 'object' ? set.exercise : null);
+          const displayName = exData?.name || (set.exercise_name && String(set.exercise_name).trim()) || 'Упражнение';
+          // Ключ: exercise_id или exercise_name (для backfill без exercise_id — иначе все объединяются в «unknown»)
+          const key = set.exercise_id || `n:${(set.exercise_name || '').trim() || '?'}`;
           if (!setsBySession[set.session_id][key]) {
-            setsBySession[set.session_id][key] = { name: exMap[set.exercise_id] || 'Упражнение', sets: 0, reps: set.reps, weight: set.weight };
+            setsBySession[set.session_id][key] = { name: displayName, setsList: [] };
           }
-          setsBySession[set.session_id][key].sets += 1;
-          setsBySession[set.session_id][key].reps = set.reps;
-          setsBySession[set.session_id][key].weight = set.weight;
+          setsBySession[set.session_id][key].setsList.push({ reps: parseNum(set.reps), weight: parseNum(set.weight) });
         });
         Object.keys(setsBySession).forEach(sid => {
-          setsBySession[sid] = Object.values(setsBySession[sid]);
+          setsBySession[sid] = Object.values(setsBySession[sid]).map(ex => {
+            const list = ex.setsList || [];
+            const totalSets = list.length;
+            const last = list[list.length - 1];
+            const totalVol = list.reduce((s, x) => s + (x.weight || 0) * (x.reps || 0), 0);
+            return {
+              name: ex.name,
+              sets: totalSets,
+              reps: last?.reps ?? 0,
+              weight: last?.weight ?? 0,
+              setsList: list,
+              totalVolume: totalVol
+            };
+          });
         });
+        
+        const sessionDateMap = sessions.reduce((acc, s) => { acc[s.id] = s.date; return acc; }, {});
+        const allSessionDateMap = (allSessions || []).reduce((acc, s) => { acc[s.id] = s.date; return acc; }, {});
+        const exById = {};
+        fetchedSets.forEach(s => { if (s.exercise_id && s.exercises && !exById[s.exercise_id]) exById[s.exercise_id] = s.exercises; });
+        const progressSets = fetchedSets.filter(st => allSessionIds.includes(st.session_id));
+        const muscleLoad = computeMuscleLoad(allSets, exById, sessionDateMap);
+        const exerciseProgress = computeExerciseProgress(progressSets, exById, allSessionDateMap);
+        const allRecords = computeAllRecords(progressSets, exById, allSessionDateMap);
+        
+        const recentSessions = displaySessions.map(s => {
+          const exList = setsBySession[s.id] || [];
+          const totalVolume = exList.reduce((sum, ex) => sum + (ex.totalVolume || 0), 0);
+          const totalSets = exList.reduce((sum, ex) => sum + (ex.sets || 0), 0);
+          return {
+            sessionId: s.id,
+            date: s.date,
+            type: s.type || 'Тренировка',
+            splitType: s.type || '',
+            totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : Math.round(totalVolume),
+            exerciseCount: exList.length,
+            totalSets,
+            exercises: exList,
+            notes: s.notes
+          };
+        });
+        
+        let thisWeekCount = 0, thisWeekVol = 0, lastWeekCount = 0, lastWeekVol = 0;
+        const dayOfWeek = now.getDay();
+        const thisWeekStart = new Date(now);
+        thisWeekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        thisWeekStart.setHours(0, 0, 0, 0);
+        const lastWeekStart = new Date(thisWeekStart);
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const lastWeekEnd = new Date(thisWeekStart.getTime() - 1);
+        (allSessions || []).forEach(s => {
+          const d = new Date(s.date + 'T12:00:00');
+          const vol = s.total_tonnage != null ? Number(s.total_tonnage) : (volumeBySession[s.id] || 0);
+          if (d >= thisWeekStart) { thisWeekCount++; thisWeekVol += vol; }
+          else if (d >= lastWeekStart && d <= lastWeekEnd) { lastWeekCount++; lastWeekVol += vol; }
+        });
+        
+        return {
+          success: true,
+          clientId,
+          period: currentPeriod,
+          generatedAt: new Date().toISOString(),
+          profile: { name: client.name },
+          goals,
+          currentBlock,
+          recentSessions,
+          exerciseProgress,
+          muscleLoad,
+          allRecords,
+          weeklyComparison: {
+            thisWeek: { count: thisWeekCount, volume: thisWeekVol },
+            lastWeek: { count: lastWeekCount, volume: lastWeekVol },
+            changes: { count: thisWeekCount - lastWeekCount, volumePercent: (() => {
+              if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
+              if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
+              return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
+            })() }
+          }
+        };
       }
       
-      const recentSessions = (sessions || []).map(s => {
-        const exercises = setsBySession[s.id] || [];
-        const totalVolume = exercises.reduce((sum, ex) => sum + (Number(ex.weight) || 0) * (Number(ex.reps) || 0), 0);
-        return {
-          sessionId: s.id,
-          date: s.date,
-          type: s.type || 'Тренировка',
-          splitType: s.type || '',
-          totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : Math.round(totalVolume),
-          exerciseCount: exercises.length,
-          totalSets: exercises.length,
-          exercises,
-          notes: s.notes
-        };
-      });
-      
-      const now = new Date();
-      const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay());
-      const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const recentSessions = displaySessions.map(s => ({
+        sessionId: s.id,
+        date: s.date,
+        type: s.type || 'Тренировка',
+        splitType: s.type || '',
+        totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : 0,
+        exerciseCount: 0,
+        totalSets: 0,
+        exercises: [],
+        notes: s.notes
+      }));
       let thisWeekCount = 0, thisWeekVol = 0, lastWeekCount = 0, lastWeekVol = 0;
-      (sessions || []).forEach(s => {
-        const d = new Date(s.date);
+      const dayOfWeekFallback = now.getDay();
+      const thisWeekStartFb = new Date(now);
+      thisWeekStartFb.setDate(now.getDate() - (dayOfWeekFallback === 0 ? 6 : dayOfWeekFallback - 1));
+      thisWeekStartFb.setHours(0, 0, 0, 0);
+      const lastWeekStartFb = new Date(thisWeekStartFb);
+      lastWeekStartFb.setDate(lastWeekStartFb.getDate() - 7);
+      const lastWeekEndFb = new Date(thisWeekStartFb.getTime() - 1);
+      (allSessions || []).forEach(s => {
+        const d = new Date(s.date + 'T12:00:00');
         const vol = s.total_tonnage != null ? Number(s.total_tonnage) : 0;
-        if (d >= thisWeekStart) { thisWeekCount++; thisWeekVol += vol; }
-        else if (d >= lastWeekStart && d < thisWeekStart) { lastWeekCount++; lastWeekVol += vol; }
+        if (d >= thisWeekStartFb) { thisWeekCount++; thisWeekVol += vol; }
+        else if (d >= lastWeekStartFb && d <= lastWeekEndFb) { lastWeekCount++; lastWeekVol += vol; }
       });
       
       return {
@@ -275,12 +374,187 @@
         recentSessions,
         exerciseProgress: { improvements: [] },
         muscleLoad: { groups: {} },
+        allRecords: [],
         weeklyComparison: {
           thisWeek: { count: thisWeekCount, volume: thisWeekVol },
           lastWeek: { count: lastWeekCount, volume: lastWeekVol },
-          changes: { count: thisWeekCount - lastWeekCount, volumePercent: lastWeekVol ? Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100) : 0 }
+          changes: { count: thisWeekCount - lastWeekCount, volumePercent: (() => {
+            if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
+            if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
+            return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
+          })() }
         }
       };
+    }
+    
+    const CATEGORY_TO_MUSCLES = {
+      'грудь': { chest: 0.8, front_delt: 0.2 },
+      'спина': { lats: 0.6, traps: 0.2, biceps: 0.2 },
+      'ноги': { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+      'плечи': { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+      'руки': { biceps: 0.5, triceps: 0.5 },
+      'кор': { core: 1.0 },
+      'корпус': { core: 1.0 },
+      'chest': { chest: 0.8, front_delt: 0.2 },
+      'back': { lats: 0.6, traps: 0.2, biceps: 0.2 },
+      'legs': { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+      'shoulders': { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+      'arms': { biceps: 0.5, triceps: 0.5 },
+      'core': { core: 1.0 }
+    };
+    const NAME_KEYWORDS = [
+      { keys: ['присед', 'жим ног', 'разгибан ног', 'разгибания ног', 'сгибан ног', 'сгибания ног', 'выпад', 'гакк', 'гоблет', 'запрыг', 'прыжк', 'тумбу', 'гиперэкстензия ног', 'носки', 'squat', 'leg press', 'leg curl', 'leg extension'], val: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 } },
+      { keys: ['подтяг', 'тяга верх', 'тяга к поясу', 'тяга горизон', 'тяга штанги', 'тяга гантел', 'тяга ', 'пуловер', 'становая', 'рдл', 'румынск', 'гиперэкстензия', 'вертикальн', 'deadlift', 'lat pulldown', 'cable row'], val: { lats: 0.5, traps: 0.2, biceps: 0.2, low_back: 0.1 } },
+      { keys: ['разгибан рук', 'разгибан на блоке', 'разгибания на блоке', 'французск', 'трицепс', 'брусья', 'tricep', 'pushdown', 'руки на блоке', 'отжимания узким'], val: { triceps: 1.0 } },
+      { keys: ['жим лёжа', 'жим лежа', 'жим штанги', 'жим гантел', 'разводка', 'отжимания', 'пекдек', 'пек дек', 'bench', 'грудь', 'chest'], val: { chest: 0.8, front_delt: 0.15, triceps: 0.05 } },
+      { keys: ['жим стоя', 'жим сидя', 'жим вверх', 'жим перед', 'махи', 'арнольд', 'подбородк', 'плеч', 'shoulder', 'delt', 'выходы силой'], val: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 } },
+      { keys: ['сгибан рук', 'сгибан на бицепс', 'сгибание на бицепс', 'молот', 'бицепс', 'bicep', 'curl'], val: { biceps: 1.0 } },
+      { keys: ['планка', 'скручиван', 'подъём ног в висе', 'подъём ног (', 'пресс', 'кор', 'core'], val: { core: 1.0 } }
+    ];
+    
+    function getCoeffs(ex, fallback) {
+      const c = ex?.muscle_coefficients;
+      if (c && typeof c === 'object' && Object.keys(c).length > 0) return c;
+      const cat = (ex?.category || '').toLowerCase();
+      for (const [key, val] of Object.entries(CATEGORY_TO_MUSCLES)) {
+        if (cat.includes(key)) return val;
+      }
+      const name = (ex?.name || '').toLowerCase();
+      for (const { keys, val } of NAME_KEYWORDS) {
+        if (keys.some(k => name.includes(k))) return val;
+      }
+      return fallback || { core: 1.0 };
+    }
+    
+    function computeMuscleLoad(sets, exById, sessionDateMap) {
+      const groups = { legs: { totalSets: 0, muscles: {} }, back: { totalSets: 0, muscles: {} }, chest: { totalSets: 0, muscles: {} }, arms: { totalSets: 0, muscles: {} }, core: { totalSets: 0, muscles: {} } };
+      const muscleToGroup = { quads: 'legs', hamstrings: 'legs', glutes: 'legs', calves: 'legs', lats: 'back', traps: 'back', low_back: 'back', chest: 'chest', biceps: 'arms', triceps: 'arms', front_delt: 'arms', mid_delt: 'arms', rear_delt: 'arms', core: 'core' };
+      
+      sets.forEach(set => {
+        const ex = (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) || exById[set.exercise_id];
+        const exForCoeffs = ex || (set.exercise_name ? { name: String(set.exercise_name).trim() } : null);
+        const coeffs = getCoeffs(exForCoeffs);
+        Object.entries(coeffs).forEach(([muscle, val]) => {
+          const g = muscleToGroup[muscle];
+          if (!g) return;
+          if (!groups[g].muscles[muscle]) groups[g].muscles[muscle] = { sets: 0 };
+          groups[g].muscles[muscle].sets += val;
+          groups[g].totalSets += val;
+        });
+      });
+      return { groups };
+    }
+    
+    function parseNum(v) {
+      if (v == null || v === '') return 0;
+      const n = Number(v);
+      if (!isNaN(n)) return n;
+      const s = String(v).replace(',', '.');
+      const n2 = parseFloat(s);
+      return isNaN(n2) ? 0 : n2;
+    }
+    function normalizeExName(name) {
+      const s = String(name || '').trim();
+      const idx = s.indexOf(' (');
+      return idx > 0 ? s.slice(0, idx).trim() : s;
+    }
+    function computeExerciseProgress(sets, exById, sessionDateMap) {
+      const byEx = {};
+      sets.forEach(set => {
+        const exId = set.exercise_id;
+        const ex = exById[exId] || (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
+        const exName = ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || 'Упражнение';
+        const normName = normalizeExName(exName);
+        const key = normName || '?';
+        const date = sessionDateMap[set.session_id];
+        if (!date) return;
+        const w = parseNum(set.weight);
+        const reps = parseNum(set.reps);
+        if (!byEx[key]) byEx[key] = { name: normName || exName, points: [] };
+        byEx[key].points.push({ date, weight: w, reps });
+      });
+      const improvements = [];
+      Object.entries(byEx).forEach(([, { name, points }]) => {
+        if (points.length < 2) return;
+        points.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const byDate = {};
+        points.forEach(p => {
+          const d = p.date;
+          const vol = p.weight * p.reps;
+          const score = vol > 0 ? vol : p.reps;
+          if (!byDate[d] || score > (byDate[d].weight * byDate[d].reps || byDate[d].reps)) byDate[d] = p;
+        });
+        const history = Object.entries(byDate).sort((a, b) => new Date(a[0]) - new Date(b[0])).map(([d, p]) => ({ date: d, weight: p.weight, reps: p.reps }));
+        const first = history[0];
+        const isBwEx = isBodyweightByName(name);
+        const val = (p) => (isBwEx ? p.reps : (p.weight > 0 ? p.weight : p.reps));
+        const best = history.reduce((b, p) => val(p) > val(b) ? p : b, first);
+        const firstVal = val(first);
+        const bestVal = val(best);
+        const progressVal = bestVal - firstVal;
+        if (progressVal <= 0) return;
+        const progressPercent = firstVal > 0 ? Math.round((progressVal / firstVal) * 100) : 100;
+        improvements.push({
+          name,
+          firstWeight: first.weight,
+          currentWeight: best.weight,
+          firstReps: first.reps,
+          currentReps: best.reps,
+          isBodyweight: isBwEx,
+          progressKg: !isBwEx && first.weight > 0 ? Math.round((best.weight - first.weight) * 10) / 10 : 0,
+          progressReps: isBwEx ? best.reps - first.reps : (best.reps - first.reps),
+          progressPercent,
+          lastDate: best.date,
+          history
+        });
+      });
+      improvements.sort((a, b) => b.progressPercent - a.progressPercent);
+      return { improvements: improvements.slice(0, 10), intensityHistory: {} };
+    }
+    
+    const BODYWEIGHT_KEYS = ['подтяг', 'отжим', 'брусья', 'выход'];
+    function isBodyweightByName(name) {
+      if (!name) return false;
+      const n = String(name).toLowerCase();
+      return BODYWEIGHT_KEYS.some(k => n.includes(k));
+    }
+    function computeAllRecords(sets, exById, sessionDateMap) {
+      const byEx = {};
+      sets.forEach(set => {
+        const exId = set.exercise_id;
+        const ex = exById[exId] || (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
+        const exName = ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || null;
+        const normName = normalizeExName(exName) || exName || 'Упражнение';
+        const w = parseNum(set.weight);
+        const reps = parseNum(set.reps);
+        const vol = w * reps;
+        const date = sessionDateMap[set.session_id];
+        if (!date) return;
+        const eq = ex?.equipment || '';
+        const isBw = (eq && (String(eq).toLowerCase().includes('свой вес') || String(eq).toLowerCase().includes('тело'))) || isBodyweightByName(normName);
+        const newScore = vol > 0 ? vol : (isBw ? reps : 0);
+        const cur = byEx[normName];
+        const curScore = cur ? (cur.vol > 0 ? cur.vol : (cur.isBodyweight ? cur.reps : 0)) : -1;
+        if (newScore > curScore) {
+          byEx[normName] = { vol, weight: w, reps, date, name: normName, isBodyweight: isBw };
+        }
+      });
+      return Object.entries(byEx)
+        .map(([, r]) => {
+          const isBw = r.isBodyweight || (r.weight === 0 && isBodyweightByName(r.name));
+          const showReps = isBw && r.reps > 0;
+          return {
+            name: r.name,
+            value: showReps ? r.reps : r.weight,
+            unit: showReps ? 'раз' : 'кг',
+            date: r.date,
+            hint: isBw && r.weight > 0 && !showReps ? ' (экв.)' : ''
+          };
+        })
+        .filter(r => {
+          if (r.unit === 'кг' && r.value === 0) return false;
+          return true;
+        });
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -513,7 +787,8 @@
         legs: { name: 'Ноги', icon: ICONS.leg, color: '#007aff', muscles: ['quads', 'hamstrings', 'glutes', 'calves'], labels: { quads: 'Квадрицепс', hamstrings: 'Бицепс бедра', glutes: 'Ягодицы', calves: 'Икры' }},
         back: { name: 'Спина', icon: ICONS.back, color: '#5856d6', muscles: ['lats', 'traps', 'low_back'], labels: { lats: 'Широчайшие', traps: 'Трапеция', low_back: 'Поясница' }},
         chest: { name: 'Грудь', icon: ICONS.chest, color: '#ff2d55', muscles: ['chest'], labels: { chest: 'Грудь' }},
-        arms: { name: 'Руки и плечи', icon: ICONS.muscle, color: '#ff9500', muscles: ['biceps', 'triceps', 'front_delt', 'mid_delt', 'rear_delt'], labels: { biceps: 'Бицепс', triceps: 'Трицепс', front_delt: 'Передняя дельта', mid_delt: 'Средняя дельта', rear_delt: 'Задняя дельта' }}
+        arms: { name: 'Руки и плечи', icon: ICONS.muscle, color: '#ff9500', muscles: ['biceps', 'triceps', 'front_delt', 'mid_delt', 'rear_delt'], labels: { biceps: 'Бицепс', triceps: 'Трицепс', front_delt: 'Передняя дельта', mid_delt: 'Средняя дельта', rear_delt: 'Задняя дельта' }},
+        core: { name: 'Кор', icon: ICONS.muscle, color: '#34c759', muscles: ['core'], labels: { core: 'Пресс/кор' }}
       };
       
       let maxGroupSets = 0;
@@ -600,24 +875,32 @@
       
       if (!improved.length) {
         return `<div class="card"><div class="card-title">${ICONS.rocket} ПРОГРЕСС</div>
-          <div class="empty-state"><div class="empty-icon">${ICONS.rocket}</div>Пока нет рекордов</div></div>`;
+          <div class="empty-state"><div class="empty-icon">${ICONS.rocket}</div>Пока нет данных о росте интенсивности</div></div>`;
       }
       
+      const formatIntensity = (p) => p.weight > 0 ? `${p.weight} кг` : `${p.reps} раз`;
       return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.rocket} ПРОГРЕСС</span></div>
-          ${improved.slice(0, 5).map(ex => `
+          ${improved.slice(0, 5).map(ex => {
+            const fmt = (p) => ex.isBodyweight ? `${p.reps} раз` : (p.weight > 0 ? `${p.weight} кг` : `${p.reps} раз`);
+            const hist = ex.history || [];
+            const histStr = hist.length > 1 ? hist.map(p => `${formatDate(p.date)}: ${fmt(p)}`).join(' → ') : '';
+            const mainVal = ex.isBodyweight ? `${ex.currentReps || 0} раз` : ((ex.currentWeight || 0) > 0 ? `${ex.currentWeight} кг` : `${ex.currentReps || 0} раз`);
+            const changeStr = (ex.progressKg || 0) > 0 ? `+${ex.progressKg} кг` : (ex.progressReps || 0) > 0 ? `+${ex.progressReps} раз` : '';
+            return `
             <div class="progress-item">
               <div class="progress-info">
                 <div class="progress-name">${ex.name}</div>
                 <div class="progress-date">${ICONS.calendar} ${ex.lastDate || 'недавно'}</div>
+                ${histStr ? `<div class="progress-history" style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${histStr}</div>` : ''}
               </div>
               <div class="progress-values">
-                <div class="progress-weight">${ex.currentWeight || ex.lastWeight} кг</div>
-                <div class="progress-change">+${ex.progressKg || 0} кг (+${ex.progressPercent || ex.progress}%)</div>
+                <div class="progress-weight">${mainVal}</div>
+                ${changeStr ? `<div class="progress-change">${changeStr} (+${ex.progressPercent || 0}%)</div>` : ''}
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       `;
     }
@@ -633,19 +916,22 @@
       return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.calendar} ПОСЛЕДНИЕ ТРЕНИРОВКИ</span></div>
-          ${sessions.slice(0, 3).map((s, i) => `
+          ${sessions.slice(0, 3).map((s, i) => {
+            const exPreview = (s.exercises || []).slice(0, 3).map(e => e.name).filter(Boolean).join(', ');
+            return `
             <div class="session-item" onclick="showSessionModal(${i})">
               <div class="session-header">
                 <span class="session-date">${formatDate(s.date)}</span>
                 <span class="session-type">${s.splitType || s.type || 'Тренировка'}</span>
               </div>
+              ${exPreview ? `<div class="session-exercises" style="font-size:13px;color:var(--text-secondary);margin:6px 0 4px;">${exPreview}</div>` : ''}
               <div class="session-stats">
                 <span class="session-stat">${ICONS.weight} ${s.exerciseCount || 0} упр.</span>
                 <span class="session-stat">${ICONS.chart} ${s.totalSets || 0} подх.</span>
                 <span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span>
               </div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       `;
     }
@@ -659,21 +945,24 @@
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.clipboard} ВСЕ ТРЕНИРОВКИ</span></div>
-          ${sessions.map((s, i) => `
+          ${sessions.map((s, i) => {
+            const exPreview = (s.exercises || []).slice(0, 3).map(e => e.name).filter(Boolean).join(', ');
+            return `
             <div class="session-item" onclick="showSessionModal(${i})">
               <div class="session-header"><span class="session-date">${formatDate(s.date)}</span><span class="session-type">${s.splitType || ''}</span></div>
+              ${exPreview ? `<div class="session-exercises" style="font-size:13px;color:var(--text-secondary);margin:6px 0 4px;">${exPreview}</div>` : ''}
               <div class="session-stats"><span class="session-stat">${ICONS.weight} ${s.exerciseCount || 0} упр.</span><span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span></div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
       `;
     }
     
     function renderRecordsPage() {
+      const allRecs = data.allRecords || [];
       const progress = data.exerciseProgress?.improvements || [];
-      const records = progress.filter(p => (p.progressPercent || p.progress) > 0).map(p => ({
-        type: 'Прогресс', name: p.name, value: `${p.currentWeight || p.lastWeight} кг`, date: p.lastDate, change: `+${p.progressKg} кг`
-      }));
+      const records = allRecs.length ? allRecs.map(r => ({ type: r.unit === 'раз' ? 'Макс. повторения' : 'Макс. вес', name: r.name, value: `${r.value} ${r.unit || 'кг'}${r.hint || ''}`, date: r.date, change: '' }))
+        : progress.filter(p => (p.progressPercent || p.progress) > 0).map(p => ({ type: 'Прогресс', name: p.name, value: `${p.currentWeight || p.lastWeight} кг`, date: p.lastDate, change: `+${p.progressKg} кг` }));
       
       return `
         <div class="card">
@@ -681,7 +970,7 @@
           ${records.length ? records.map(r => `
             <div class="record-item">
               <div><div class="record-type">${r.type}</div><div class="record-name">${r.name}</div></div>
-              <div class="record-value-container"><div class="record-value">${r.value}</div><div class="record-date">${r.date || ''} • ${r.change}</div></div>
+              <div class="record-value-container"><div class="record-value">${r.value}</div><div class="record-date">${r.date || ''}${r.change ? ' • ' + r.change : ''}</div></div>
             </div>
           `).join('') : `<div class="empty-state"><div class="empty-icon">${ICONS.trophy}</div>Пока нет рекордов</div>`}
         </div>
@@ -717,11 +1006,12 @@
       if (!s) return;
       const exercises = s.exercises || [];
       
+      const workoutName = (s.splitType || s.type || '').trim() || 'Тренировка';
       document.getElementById('sessionModal').innerHTML = `
         <div class="modal">
           <div class="modal-handle"></div>
           <h2>${formatDate(s.date)}</h2>
-          <div class="modal-subtitle">${s.splitType || s.type || 'Тренировка'}</div>
+          <div class="modal-subtitle">${workoutName}</div>
           <div class="modal-section">
             <div class="modal-stat-grid">
               <div class="modal-stat"><div class="modal-stat-value">${s.exerciseCount || exercises.length || 0}</div><div class="modal-stat-label">Упражнений</div></div>
@@ -730,7 +1020,15 @@
             </div>
           </div>
           ${exercises.length ? `<div class="modal-section"><div class="modal-section-title">${ICONS.weight} УПРАЖНЕНИЯ</div>
-            <div class="modal-exercise-list">${exercises.map(ex => `<div class="modal-exercise"><span class="modal-exercise-name">${ex.name}</span><span class="modal-exercise-detail">${ex.sets || 0}×${ex.reps || 0} • ${ex.weight || 0} кг</span></div>`).join('')}</div></div>` : ''}
+            <div class="modal-exercise-list">${exercises.map(ex => {
+              const list = ex.setsList || (ex.sets ? [{ reps: ex.reps, weight: ex.weight }] : []);
+              const fmt = (w) => { const n = parseNum(w); return n % 1 === 0 ? n : Math.round(n * 100) / 100; };
+              const detail = list.length ? list.map(x => {
+                const w = parseNum(x.weight);
+                return w > 0 ? `${x.reps}×${fmt(w)} кг` : `${x.reps} раз`;
+              }).join(', ') : `${ex.sets || 0}×${ex.reps || 0} • ${parseNum(ex.weight)} кг`;
+              return `<div class="modal-exercise"><span class="modal-exercise-name">${ex.name}</span><span class="modal-exercise-detail">${detail}</span></div>`;
+            }).join('')}</div></div>` : ''}
           ${s.notes ? `<div class="modal-section"><div class="modal-section-title">ЗАМЕТКИ</div><div style="padding: 12px; background: var(--bg); border-radius: 8px;">${s.notes}</div></div>` : ''}
         </div>
       `;

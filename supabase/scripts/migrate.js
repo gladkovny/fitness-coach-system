@@ -139,6 +139,7 @@ async function main() {
         videoUrl: ['videourl', 'video'],
         notes: ['notes'],
         laterality: ['laterality'],
+        bodyweightRatio: ['bodyweightratio', 'bwratio', 'bodyweight_ratio'],
       });
       const toInsert = [];
       for (let i = 1; i < exRows.length; i++) {
@@ -146,6 +147,7 @@ async function main() {
         const oldId = exCols.id >= 0 ? String(r[exCols.id] || '') : '';
         const name = exCols.name >= 0 ? String(r[exCols.name] || '') : '';
         if (!name) continue;
+        const bwRatioVal = exCols.bodyweightRatio >= 0 ? parseFloat(r[exCols.bodyweightRatio]) : null;
         toInsert.push({
           trainer_id: null,
           name,
@@ -154,6 +156,7 @@ async function main() {
           equipment: exCols.equipment >= 0 ? String(r[exCols.equipment] || '') : null,
           video_url: exCols.videoUrl >= 0 ? String(r[exCols.videoUrl] || '') : null,
           laterality: exCols.laterality >= 0 ? String(r[exCols.laterality] || '') : null,
+          bodyweight_ratio: bwRatioVal > 0 && bwRatioVal <= 1 ? bwRatioVal : null,
           _oldId: oldId,
         });
       }
@@ -245,6 +248,8 @@ async function main() {
           date: ['date'],
           blockId: ['blockid'],
           type: ['type'],
+          splitType: ['splittype', 'split_type'],
+          name: ['name', 'название', 'workout'],
           notes: ['notes'],
           totalVolume: ['totalvolume', 'volume'],
         });
@@ -254,11 +259,14 @@ async function main() {
           const date = formatDate(wsC.date >= 0 ? r[wsC.date] : null);
           if (!date) continue;
           const blockId = wsC.blockId >= 0 ? blockIdToUuid[String(r[wsC.blockId] || '')] : null;
+          const typeVal = (wsC.splitType >= 0 && r[wsC.splitType]) ? String(r[wsC.splitType]).trim()
+            : (wsC.type >= 0 && r[wsC.type]) ? String(r[wsC.type]).trim()
+            : (wsC.name >= 0 && r[wsC.name]) ? String(r[wsC.name]).trim() : null;
           const payload = {
             client_id: clientUuid,
             block_id: blockId || null,
             date,
-            type: wsC.type >= 0 ? String(r[wsC.type] || '') : null,
+            type: typeVal || null,
             status: 'completed',
             notes: wsC.notes >= 0 ? String(r[wsC.notes] || '') : null,
             total_tonnage: wsC.totalVolume >= 0 ? parseFloat(r[wsC.totalVolume]) || null : null,
@@ -270,6 +278,14 @@ async function main() {
         }
       }
 
+      const parseNum = (v) => {
+        if (v == null || v === '') return null;
+        const n = Number(v);
+        if (!isNaN(n)) return n;
+        const s = String(v).replace(',', '.');
+        const n2 = parseFloat(s);
+        return isNaN(n2) ? null : n2;
+      };
       // WorkoutLog → workout_sets
       const wlRows = await getSheetData(spreadsheetId, 'WorkoutLog');
       if (wlRows.length >= 2) {
@@ -295,9 +311,10 @@ async function main() {
           const payload = {
             session_id: sessionUuid,
             exercise_id: exerciseUuid,
+            exercise_name: exName || null,
             set_number: setNumber,
-            reps: wlC.reps >= 0 ? parseInt(r[wlC.reps], 10) || null : null,
-            weight: wlC.weight >= 0 ? parseFloat(r[wlC.weight]) || null : null,
+            reps: wlC.reps >= 0 ? parseInt(String(r[wlC.reps]).replace(',', '.'), 10) || null : null,
+            weight: wlC.weight >= 0 ? parseNum(r[wlC.weight]) : null,
             rpe: wlC.rpe >= 0 ? parseInt(r[wlC.rpe], 10) || null : null,
           };
           if (!DRY_RUN && payload.session_id) await supabase.from('workout_sets').insert(payload);
