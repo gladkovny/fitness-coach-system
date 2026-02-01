@@ -6,6 +6,7 @@ supabase/.env
 # Миграция: конфиг и ключи Google (не коммитить)
 supabase/scripts/config.json
 supabase/scripts/google-credentials.json
+supabase/.temp/
 
 # Dependencies
 node_modules/
