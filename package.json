@@ -6,7 +6,14 @@
     "sync": "node scripts/sync-claude.js",
     "sync:watch": "node scripts/sync-claude.js && echo 'Watching...' && timeout /t 60 > nul && npm run sync:watch"
   },
-  "keywords": ["fitness", "coach", "google-apps-script"],
+  "keywords": [
+    "fitness",
+    "coach",
+    "google-apps-script"
+  ],
   "author": "Николай",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "supabase": "^2.74.5"
+  }
 }

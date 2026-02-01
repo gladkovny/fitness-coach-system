@@ -8,10 +8,10 @@
     <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
-    <!-- Общие модули (опционально) -->
-    <!-- <link rel="stylesheet" href="../css/common.css"> -->
-    <!-- <script src="../js/utils.js" defer></script> -->
-    <!-- <script src="../js/api.js" defer></script> -->
+    <!-- Supabase + Tracker API -->
+    <script src="../js/supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/tracker-supabase.js"></script>
     
     <style>
         :root {
@@ -2508,18 +2508,24 @@
         // ═══════════════════════════════════════════════════════════
         
         document.addEventListener('DOMContentLoaded', async () => {
-            // Setup settings button
             document.getElementById('settingsBtn').addEventListener('click', openSettings);
             
-            // Check API URL
-            if (!CONFIG.API_URL) {
-                openSettings();
-                return;
+            // Supabase: проверка сессии — без входа редирект на login
+            if (window.supabase && window.SUPABASE_URL) {
+                try {
+                    const { data: { session } } = await window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY).auth.getSession();
+                    if (!session) {
+                        window.location.href = '../login.html?redirect=' + encodeURIComponent('tracker/index.html');
+                        return;
+                    }
+                } catch (e) {
+                    window.location.href = '../login.html?redirect=' + encodeURIComponent('tracker/index.html');
+                    return;
+                }
             }
             
             await loadClients();
             
-            // Auto-select last client
             const lastClient = localStorage.getItem('last_client');
             if (lastClient) {
                 document.getElementById('clientSelector').value = lastClient;
@@ -2532,10 +2538,14 @@
         // ═══════════════════════════════════════════════════════════
         
         async function apiCall(action, params = {}) {
-            if (!CONFIG.API_URL) {
-                throw new Error('API URL не настроен');
+            // Supabase: если есть handler — используем его
+            if (window.TrackerSupabase?.hasHandler?.(action)) {
+                return window.TrackerSupabase.apiCall(action, params);
             }
-            
+            // Fallback: GAS (для parseWorkout, saveNutrition и др.)
+            if (!CONFIG.API_URL) {
+                throw new Error('API URL не настроен. Supabase не поддерживает действие: ' + action);
+            }
             const url = new URL(CONFIG.API_URL);
             url.searchParams.set('action', action);
             Object.entries(params).forEach(([key, value]) => {
@@ -2543,14 +2553,11 @@
                     url.searchParams.set(key, value);
                 }
             });
-            
             const response = await fetch(url.toString());
             const data = await response.json();
-            
             if (data.error) {
                 throw new Error(data.error);
             }
-            
             return data;
         }
         
@@ -4558,7 +4565,7 @@
             // 0. ЯВНЫЕ ПРАВИЛА - 100% точность для известных паттернов
             for (const rule of EXPLICIT_EXERCISE_RULES) {
                 if (rule.pattern.test(nameNorm)) {
-                    const found = exercises.find(e => e.id === rule.id);
+                    const found = exercises.find(e => (e.key || e.id) === rule.id);
                     if (found) {
                         console.log(`[DB] Explicit rule: "${name}" → ${rule.id}`);
                         return found;

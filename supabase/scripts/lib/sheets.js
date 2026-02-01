@@ -20,6 +20,40 @@ function getAuth() {
   return auth;
 }
 
+const SESSION_SHEET_NAMES = ['WorkoutSessions', 'Workout Sessions', 'Тренировки', 'Сессии', 'Sessions'];
+
+/**
+ * Находит имя листа сессий в таблице (поддерживает разные названия).
+ * @param {string} spreadsheetId
+ * @returns {Promise<string|null>} имя листа или null
+ */
+export async function findSessionSheetName(spreadsheetId) {
+  const authClient = await getAuth().getClient();
+  const sheets = google.sheets({ version: 'v4', auth: authClient });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const titles = (meta.data.sheets || []).map(s => (s.properties?.title || '').trim());
+  for (const want of SESSION_SHEET_NAMES) {
+    const found = titles.find(t => t.toLowerCase() === want.toLowerCase());
+    if (found) return found;
+  }
+  return titles.find(t => /workout|session|тренир|сесси/i.test(t)) || null;
+}
+
+/**
+ * Читает лист сессий, пробуя разные названия при ошибке.
+ * @param {string} spreadsheetId
+ * @returns {Promise<Array<Array>>} строки листа
+ */
+export async function getSessionSheetData(spreadsheetId) {
+  try {
+    return await getSheetData(spreadsheetId, 'WorkoutSessions');
+  } catch (e) {
+    const name = await findSessionSheetName(spreadsheetId);
+    if (name) return await getSheetData(spreadsheetId, name);
+    throw e;
+  }
+}
+
 /**
  * Возвращает все строки листа (первая строка — заголовки).
  * @param {string} spreadsheetId — ID таблицы
