@@ -177,11 +177,17 @@
     }
     
     async function loadDashboardFromSupabase(clientId) {
-      const [{ data: client, error: clientErr }, { data: allSessions, error: sessionsErr }] = await Promise.all([
+      const [{ data: client, error: clientErr }, { data: allSessions, error: sessionsErr }, mandatoryResult] = await Promise.all([
         supabaseClient.from('clients').select('id, name, profile').eq('id', clientId).single(),
         supabaseClient.from('workout_sessions').select('id, date, type, status, notes, total_tonnage, block_id')
-          .eq('client_id', clientId).order('date', { ascending: false }).limit(1000)
+          .eq('client_id', clientId).order('date', { ascending: false }).limit(1000),
+        Promise.all([
+          supabaseClient.from('mandatory_tasks').select('id, name, category').eq('client_id', clientId).eq('active', true).order('sort_order'),
+          supabaseClient.from('mandatory_task_log').select('task_id').eq('client_id', clientId)
+        ]).then(([a, b]) => ({ tasks: a.data || [], logs: b.data || [] })).catch(() => ({ tasks: [], logs: [] }))
       ]);
+      const mandatoryTasks = mandatoryResult.tasks;
+      const mandatoryLogs = mandatoryResult.logs;
       if (clientErr || !client) throw clientErr || new Error('Клиент не найден');
       
       const profile = client.profile || {};
@@ -321,6 +327,7 @@
           profile: { name: client.name },
           goals,
           currentBlock,
+          mandatoryStats,
           recentSessions,
           exerciseProgress,
           muscleLoad,
@@ -691,6 +698,7 @@
         
         <main class="main-page" id="mainPage">
           ${renderBlockProgress()}
+          ${renderMandatoryTasks()}
           ${renderGoals()}
           ${renderMuscleLoad()}
           ${renderWeeklyComparison()}
@@ -758,6 +766,24 @@
       `;
     }
     
+    function renderMandatoryTasks() {
+      const tasks = data.mandatoryStats?.tasks || [];
+      if (!tasks.length) return '';
+      return `
+        <div class="card">
+          <div class="card-header"><span class="card-title">✅ ОБЯЗАТЕЛЬНЫЕ ЗАДАЧИ</span></div>
+          <div class="goals-list" style="flex-direction: column; gap: 8px;">
+            ${tasks.map(t => `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 8px;">
+                <span>${t.name}</span>
+                <strong style="color: var(--accent);">${t.completed} раз</strong>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     function renderGoals() {
       const goalsText = data.goals?.mainGoals || '';
       if (!goalsText) return '';

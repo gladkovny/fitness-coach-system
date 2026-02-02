@@ -35,22 +35,21 @@ Deno.serve(async (req) => {
 
     const prompt = `Распарси текст тренировки в JSON.
 
-КАНОНИЧЕСКИЕ НАЗВАНИЯ (предпочтительный формат вывода):
-Махи гантелей в стороны, Махи в наклоне, Разгибание рук на блоке, Сгибание рук со штангой, Подтягивания, Жим ногами, Приседания со штангой и т.д. Если пользователь написал разговорный вариант ("махи с гантелями", "бицепс на блоке") — выводи каноническое название.
+ЗАПРЕЩЕНО переименовывать:
+- "Отведение плеча в тренажере" — это ПЛЕЧИ (махи в сторону). НИКОГДА не заменяй на "Отведение гантели назад" — это трицепс, другое упражнение!
+- Вход: "Отведение плеча в тренажере 12,5 кг на 10 раз 3 подхода" → Выход: name="Отведение плеча в тренажере", category="Плечи", sets: 3 подхода по 12.5×10
 
-ПРАВИЛА КАТЕГОРИЙ (category):
-- "Отведение плеча", "Махи в стороны", "Отведение руки в сторону" → Плечи (НЕ Руки!)
-- "Отведение гантели назад" (kickback на трицепс) → Руки
-- "Отведение плеча в тренажере" = махи/разведение на плечи → Плечи
+КАНОНИЧЕСКИЕ НАЗВАНИЯ:
+Махи гантелей в стороны, Махи в наклоне, Разгибание рук на блоке, Сгибание рук со штангой и т.д.
+
+ПРАВИЛА КАТЕГОРИЙ:
+- "Отведение плеча", "Отведение плеча в тренажере", "Махи в стороны", "Махи в тренажере" → Плечи
+- "Отведение гантели назад (в наклоне)" = kickback → Руки (трицепс)
 
 ФОРМАТЫ ПОДХОДОВ:
-- "60×12, 70×10" = 2 подхода: 60кг×12, 70кг×10
-- "12,5 кг на 10 раз, 3 подхода" = 3 одинаковых подхода: 12.5×10, 12.5×10, 12.5×10
+- "60×12, 70×10" = 2 подхода: 60×12, 70×10
+- "12,5 кг на 10 раз 3 подхода" или "12,5 кг на 10 раз, 3 подхода" = 3 одинаковых: 12.5×10, 12.5×10, 12.5×10
 - "10 кг, 8 и 6 раз" = 2 подхода: 10×8, 10×6
-- "10 кг, 8, 6 и 5 раз" = 4 подхода: 10×8, 10×6, 10×5
-- "по 8 раз с 40 кг, 3 подхода" = 3×40×8
-
-ВАЖНО: Сохраняй название упражнения БЕЗ добавления лишних слов. "Отведение плеча в тренажере" НЕ менять на "Отведение гантели назад (в наклоне)" — это разные упражнения.
 
 Верни ТОЛЬКО валидный JSON (без markdown, без \`\`\`):
 {"exercises":[{"name":"Название","category":"Грудь|Спина|Ноги|Плечи|Руки|Кор|Другое","equipment":"","position":"","sets":[{"weight":число,"reps":число}],"unilateral":false}],"rpe":null,"duration":null}
@@ -88,15 +87,49 @@ ${text.trim()}`;
     }
 
     const parsed: ParseResult = JSON.parse(match[0]);
+    const inputLower = text.trim().toLowerCase();
+
     if (parsed.exercises) {
-      parsed.exercises = parsed.exercises.map((ex: Exercise) => ({
-        name: ex.name || '',
-        category: ex.category || 'Другое',
-        equipment: ex.equipment || '',
-        position: ex.position || '',
-        sets: ex.sets || [],
-        unilateral: ex.unilateral || false
-      }));
+      parsed.exercises = parsed.exercises.map((ex: Exercise) => {
+        let name = ex.name || '';
+        let category = ex.category || 'Другое';
+
+        // Пост-обработка: AI часто путает "Отведение плеча в тренажере" (плечи) с "Отведение гантели назад" (трицепс)
+        if (inputLower.includes('отведение плеча в тренажере') && !inputLower.includes('отведение гантели назад')) {
+          const nameLower = name.toLowerCase();
+          if ((nameLower.includes('отведение гантели') && nameLower.includes('назад')) || nameLower.includes('гантели назад')) {
+            name = 'Отведение плеча в тренажере';
+            category = 'Плечи';
+          }
+        }
+
+        return {
+          name,
+          category,
+          equipment: ex.equipment || '',
+          position: ex.position || '',
+          sets: ex.sets || [],
+          unilateral: ex.unilateral || false
+        };
+      });
+
+      // Расширение подходов: "12,5 кг на 10 раз 3 подхода" → 3 одинаковых подхода
+      const lateralMatch = inputLower.match(/отведение плеча[^]*?(\d+(?:[.,]\d+)?)\s*кг\s+на\s+(\d+)\s+раз\s+(\d+)\s+подход(?:а|ов)?/i);
+      if (lateralMatch) {
+        const [, weightStr, repsStr, nStr] = lateralMatch;
+        const n = parseInt(nStr, 10);
+        const w = parseFloat(weightStr.replace(',', '.'));
+        const r = parseInt(repsStr, 10);
+        if (n > 1) {
+          const idx = parsed.exercises.findIndex((ex: Exercise) => {
+            const nl = (ex.name || '').toLowerCase();
+            return nl.includes('отведение плеча') && ex.sets?.length === 1;
+          });
+          if (idx >= 0) {
+            parsed.exercises[idx].sets = Array(n).fill(null).map(() => ({ weight: w, reps: r }));
+          }
+        }
+      }
     }
 
     return json({ success: true, ...parsed });

@@ -1,0 +1,14 @@
+# Netlify — сайт тренера (deploy/master)
+# При подключении репо к Netlify папка публикации подставится автоматически.
+# Для сайта Марка создай второй сайт в Netlify с publish = "deploy/mark".
+
+[build]
+  publish = "deploy/master"
+  # Сборки нет — статика
+  command = ""
+
+# Редиректы для SPA-подобного поведения (опционально)
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200

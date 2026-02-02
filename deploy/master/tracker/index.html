@@ -4978,16 +4978,38 @@
         // MUSCLE LOAD - Распределение нагрузки по мышцам
         // ═══════════════════════════════════════════════════════════
         
+        const COEFF_DB_TO_UI = {
+            chest: 'Грудь', front_delt: 'Передняя дельта', mid_delt: 'Средняя дельта', rear_delt: 'Задняя дельта',
+            triceps: 'Трицепс', biceps: 'Бицепс',
+            lats: 'Широчайшие', traps: 'Трапеция', low_back: 'Поясница',
+            quads: 'Квадрицепс', hamstrings: 'Бицепс бедра', glutes: 'Ягодицы', calves: 'Икры',
+            core: 'Кор'
+        };
+        
+        function normalizeCoeffsForEditor(rawCoeffs) {
+            let coeffs = {};
+            for (const [k, v] of Object.entries(rawCoeffs || {})) {
+                const uiKey = COEFF_DB_TO_UI[k] || k;
+                if (typeof v === 'number' && v > 0) coeffs[uiKey] = v;
+            }
+            let sum = Object.values(coeffs).reduce((a, b) => a + b, 0);
+            if (sum > 0 && Math.abs(sum - 1) > 0.01) {
+                for (const k of Object.keys(coeffs)) coeffs[k] = coeffs[k] / sum;
+            }
+            return coeffs;
+        }
+        
         function getExerciseCoeffs(exerciseName) {
             // Ищем упражнение в базе данных
             const dbEx = getExerciseFromDB(exerciseName);
             
             if (dbEx && dbEx.muscleCoeffs) {
-                // Парсим коэффициенты из базы
+                // Парсим коэффициенты из базы (ключи могут быть EN: chest, front_delt...)
                 try {
-                    const coeffs = typeof dbEx.muscleCoeffs === 'string' 
+                    const raw = typeof dbEx.muscleCoeffs === 'string' 
                         ? JSON.parse(dbEx.muscleCoeffs) 
                         : dbEx.muscleCoeffs;
+                    const coeffs = normalizeCoeffsForEditor(raw);
                     return { coeffs, fromMaster: true, category: dbEx.category, subcategory: dbEx.subcategory };
                 } catch (e) {
                     console.warn('Ошибка парсинга коэффициентов:', e);
@@ -6302,13 +6324,16 @@
                                 <div class="task-inputs">
                                     <div class="task-input-row">
                                         <input type="text" class="form-input" id="task1Name" 
-                                               placeholder="Задача 1 (напр. Разработка кисти)">
+                                               placeholder="Задача 1 (напр. Выход силой через две руки)">
                                         <select class="form-input task-type" id="task1Type">
-                                            <option value="ЛФК">ЛФК</option>
+                                            <option value="Навык">Навык</option>
+                                            <option value="Выход">Выход</option>
+                                            <option value="Разминка">Разминка</option>
+                                            <option value="Заминка">Заминка</option>
                                             <option value="Растяжка">Растяжка</option>
+                                            <option value="ЛФК">ЛФК</option>
                                             <option value="Контроль">Контроль</option>
                                             <option value="Осанка">Осанка</option>
-                                            <option value="Навык">Навык</option>
                                             <option value="Другое">Другое</option>
                                         </select>
                                     </div>
@@ -6316,11 +6341,14 @@
                                         <input type="text" class="form-input" id="task2Name" 
                                                placeholder="Задача 2 (опционально)">
                                         <select class="form-input task-type" id="task2Type">
-                                            <option value="ЛФК">ЛФК</option>
+                                            <option value="Навык">Навык</option>
+                                            <option value="Выход">Выход</option>
+                                            <option value="Разминка">Разминка</option>
+                                            <option value="Заминка">Заминка</option>
                                             <option value="Растяжка">Растяжка</option>
+                                            <option value="ЛФК">ЛФК</option>
                                             <option value="Контроль">Контроль</option>
                                             <option value="Осанка">Осанка</option>
-                                            <option value="Навык">Навык</option>
                                             <option value="Другое">Другое</option>
                                         </select>
                                     </div>
@@ -6328,11 +6356,14 @@
                                         <input type="text" class="form-input" id="task3Name" 
                                                placeholder="Задача 3 (опционально)">
                                         <select class="form-input task-type" id="task3Type">
-                                            <option value="ЛФК">ЛФК</option>
+                                            <option value="Навык">Навык</option>
+                                            <option value="Выход">Выход</option>
+                                            <option value="Разминка">Разминка</option>
+                                            <option value="Заминка">Заминка</option>
                                             <option value="Растяжка">Растяжка</option>
+                                            <option value="ЛФК">ЛФК</option>
                                             <option value="Контроль">Контроль</option>
                                             <option value="Осанка">Осанка</option>
-                                            <option value="Навык">Навык</option>
                                             <option value="Другое">Другое</option>
                                         </select>
                                     </div>

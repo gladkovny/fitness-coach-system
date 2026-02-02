@@ -37,8 +37,8 @@
       saveDailyData: saveDailyDataSupabase,
       getMandatoryTasks: getMandatoryTasksSupabase,
       logMandatoryTaskCompletion: logMandatoryTaskCompletionSupabase,
-      updateMandatoryTasks: () => ({}),
-      saveMandatoryTaskLog: () => ({})
+      updateMandatoryTasks: updateMandatoryTasksSupabase,
+      saveMandatoryTaskLog: saveMandatoryTaskLogSupabase
     };
 
     const handler = handlers[action];
@@ -350,23 +350,106 @@
   }
 
   async function getMandatoryTasksSupabase({ clientId }) {
-    const DEFAULT_TASKS = [
-      { id: 'warmup', name: 'Разминка', description: '', target: '', active: true },
-      { id: 'cooldown', name: 'Заминка', description: '', target: '', active: true },
-      { id: 'stretch', name: 'Растяжка', description: '', target: '', active: true }
-    ];
-    return { tasks: DEFAULT_TASKS };
+    if (!clientId) return { tasks: [] };
+    const { data: tasks, error: tasksErr } = await supabase
+      .from('mandatory_tasks')
+      .select('id, name, category, sort_order, active')
+      .eq('client_id', clientId)
+      .eq('active', true)
+      .order('sort_order');
+    if (tasksErr) throw new Error(tasksErr.message);
+    const list = tasks || [];
+    if (list.length === 0) return { tasks: [] };
+    const taskIds = list.map(t => t.id);
+    const { data: logs } = await supabase
+      .from('mandatory_task_log')
+      .select('task_id')
+      .eq('client_id', clientId)
+      .in('task_id', taskIds);
+    const countByTask = {};
+    (logs || []).forEach(log => {
+      countByTask[log.task_id] = (countByTask[log.task_id] || 0) + 1;
+    });
+    const result = list.map(t => ({
+      id: t.id,
+      name: t.name,
+      description: t.category || '',
+      target: '',
+      active: t.active !== false,
+      completionCount: countByTask[t.id] || 0
+    }));
+    return { tasks: result };
   }
 
   async function logMandatoryTaskCompletionSupabase({ clientId, sessionId, tasks }) {
-    if (!sessionId || !tasks || tasks.length === 0) return {};
-    const completed = tasks.filter(t => t.completed).map(t => t.taskName).join(', ');
-    if (!completed) return {};
-    const { data: sess } = await supabase.from('workout_sessions').select('notes').eq('id', sessionId).single();
-    const prev = sess?.notes || '';
-    const suffix = (prev ? prev + '. ' : '') + 'Задачи: ' + completed;
-    await supabase.from('workout_sessions').update({ notes: suffix }).eq('id', sessionId).eq('client_id', clientId);
+    if (!clientId || !sessionId || !tasks || tasks.length === 0) return {};
+    const completed = tasks.filter(t => t.completed);
+    if (completed.length === 0) return {};
+    const toInsert = completed.map(t => ({
+      client_id: clientId,
+      session_id: sessionId,
+      task_id: t.taskId
+    })).filter(r => r.task_id);
+    if (toInsert.length === 0) return {};
+    const { error } = await supabase.from('mandatory_task_log').insert(toInsert);
+    if (error) throw new Error(error.message);
     return {};
+  }
+
+  async function updateMandatoryTasksSupabase({ clientId, tasks }) {
+    if (!clientId || !tasks || !Array.isArray(tasks)) return {};
+    const existing = await supabase.from('mandatory_tasks').select('id').eq('client_id', clientId);
+    const existingIds = (existing.data || []).map(t => t.id);
+    const incoming = tasks.slice(0, 3).filter(t => t && (t.name || '').trim());
+    for (let i = 0; i < incoming.length; i++) {
+      const t = incoming[i];
+      const payload = {
+        client_id: clientId,
+        name: (t.name || '').trim(),
+        category: t.category || t.type || null,
+        sort_order: i,
+        active: t.active !== false
+      };
+      if (t.id && existingIds.includes(t.id)) {
+        await supabase.from('mandatory_tasks').update(payload).eq('id', t.id).eq('client_id', clientId);
+      } else {
+        const { error } = await supabase.from('mandatory_tasks').insert(payload);
+        if (error) throw new Error(error.message);
+      }
+    }
+    const keptIds = incoming.filter(t => t.id).map(t => t.id);
+    const toDelete = existingIds.filter(id => !keptIds.includes(id));
+    if (toDelete.length) {
+      await supabase.from('mandatory_tasks').delete().eq('client_id', clientId).in('id', toDelete);
+    }
+    return { success: true };
+  }
+
+  async function saveMandatoryTaskLogSupabase({ clientId, sessionId, date, tasks }) {
+    if (!clientId || !tasks || tasks.length === 0) return { success: true };
+    let sid = sessionId;
+    if (!sid && date) {
+      const { data: sess } = await supabase
+        .from('workout_sessions')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('date', date)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      sid = sess?.id;
+    }
+    const toInsert = tasks
+      .filter(t => t.taskId)
+      .map(t => ({
+        client_id: clientId,
+        session_id: sid || null,
+        task_id: t.taskId
+      }));
+    if (toInsert.length === 0) return { success: true };
+    const { error } = await supabase.from('mandatory_task_log').insert(toInsert);
+    if (error) throw new Error(error.message);
+    return { success: true, saved: toInsert.length };
   }
 
   async function addExerciseSupabase({ name, category, equipment }) {
