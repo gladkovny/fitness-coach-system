@@ -20,6 +20,7 @@
 | 00008 | workout_sets_exercise_name | ☐ / ✅ | | Колонка workout_sets.exercise_name есть |
 | 00009 | exercises_bodyweight_ratio | ✅ | 31.01.2026 | Колонка exercises.bodyweight_ratio есть, у «Своё тело» — значения |
 | 00010 | client_profile_weight | ✅ | 31.01.2026 | Комментарий на clients.profile (документация) |
+| 00011 | exercises_aliases | ☐ / ✅ | | Колонка exercises.aliases, алиасы заполнены |
 
 ---
 
@@ -43,7 +44,9 @@ SELECT 'exercises' AS tbl, COUNT(*) FROM exercises
 UNION ALL
 SELECT 'bodyweight_ratio', COUNT(*) FROM exercises WHERE bodyweight_ratio IS NOT NULL
 UNION ALL
-SELECT 'exercise_name', COUNT(*) FROM workout_sets WHERE exercise_name IS NOT NULL;
+SELECT 'exercise_name', COUNT(*) FROM workout_sets WHERE exercise_name IS NOT NULL
+UNION ALL
+SELECT 'aliases', COUNT(*) FROM exercises WHERE aliases IS NOT NULL AND aliases != '[]'::jsonb;
 ```
 
 ---

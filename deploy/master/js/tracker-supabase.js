@@ -35,8 +35,8 @@
       createTrainingBlock: createTrainingBlockSupabase,
       addExercise: addExerciseSupabase,
       saveDailyData: saveDailyDataSupabase,
-      getMandatoryTasks: () => ({ tasks: [] }),
-      logMandatoryTaskCompletion: () => ({}),
+      getMandatoryTasks: getMandatoryTasksSupabase,
+      logMandatoryTaskCompletion: logMandatoryTaskCompletionSupabase,
       updateMandatoryTasks: () => ({}),
       saveMandatoryTaskLog: () => ({})
     };
@@ -92,7 +92,7 @@
   }
 
   async function getExercisesSupabase({ clientId, search = '', category = '' }) {
-    let q = supabase.from('exercises').select('id, name, category, subcategory, equipment, muscle_coefficients, key');
+    let q = supabase.from('exercises').select('id, name, category, subcategory, equipment, muscle_coefficients, key, aliases');
     if (category) q = q.eq('category', category);
     if (search) q = q.ilike('name', '%' + search + '%');
     const { data, error } = await q.order('name').limit(200);
@@ -103,7 +103,8 @@
       category: e.category || 'Другое',
       subcategory: e.subcategory || '',
       equipment: e.equipment || '',
-      muscleCoeffs: e.muscle_coefficients || {}
+      muscleCoeffs: e.muscle_coefficients || {},
+      aliases: (e.aliases && Array.isArray(e.aliases)) ? e.aliases : []
     }));
     return { exercises };
   }
@@ -300,7 +301,10 @@
 
     const { data: sess } = await supabase.from('workout_sessions').select('block_id').eq('id', sessionId).single();
     if (sess?.block_id) {
-      await supabase.rpc('increment_block_used', { block_id: sess.block_id }).catch(() => {});
+      try {
+        const r = supabase.rpc('increment_block_used', { block_id: sess.block_id });
+        if (r && typeof r.then === 'function') await r;
+      } catch (_) { /* RPC может отсутствовать — обновление блока ниже */ }
       const { data: bl } = await supabase.from('training_blocks').select('used_sessions').eq('id', sess.block_id).single();
       if (bl) {
         await supabase.from('training_blocks').update({ used_sessions: (bl.used_sessions || 0) + 1 }).eq('id', sess.block_id);
@@ -343,6 +347,26 @@
     const { data: blocks } = await supabase.from('training_blocks').select('id').eq('program_id', prog.id);
     const blockId = (blocks || []).length;
     return { success: true, blockId };
+  }
+
+  async function getMandatoryTasksSupabase({ clientId }) {
+    const DEFAULT_TASKS = [
+      { id: 'warmup', name: 'Разминка', description: '', target: '', active: true },
+      { id: 'cooldown', name: 'Заминка', description: '', target: '', active: true },
+      { id: 'stretch', name: 'Растяжка', description: '', target: '', active: true }
+    ];
+    return { tasks: DEFAULT_TASKS };
+  }
+
+  async function logMandatoryTaskCompletionSupabase({ clientId, sessionId, tasks }) {
+    if (!sessionId || !tasks || tasks.length === 0) return {};
+    const completed = tasks.filter(t => t.completed).map(t => t.taskName).join(', ');
+    if (!completed) return {};
+    const { data: sess } = await supabase.from('workout_sessions').select('notes').eq('id', sessionId).single();
+    const prev = sess?.notes || '';
+    const suffix = (prev ? prev + '. ' : '') + 'Задачи: ' + completed;
+    await supabase.from('workout_sessions').update({ notes: suffix }).eq('id', sessionId).eq('client_id', clientId);
+    return {};
   }
 
   async function addExerciseSupabase({ name, category, equipment }) {

@@ -2485,6 +2485,7 @@
             currentSplit: '',
             workoutName: '',
             workoutRPE: 0,
+            workoutDate: null,
             viewingSession: null,
             editingSessionId: null
         };
@@ -4377,6 +4378,11 @@
                 <!-- Название тренировки -->
                 <div class="workout-meta-form">
                     <div class="form-group">
+                        <label class="form-label">📅 Дата тренировки</label>
+                        <input type="date" class="form-input" id="workoutDateInput" 
+                               value="${(workoutState.workoutDate || new Date().toISOString().split('T')[0])}">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Название тренировки</label>
                         <input type="text" class="form-input" id="workoutNameInput" 
                                placeholder="Спина+бицепс, Ноги, Push day..."
@@ -4560,8 +4566,25 @@
             
             const nameNorm = normalizeText(applyExerciseSynonyms(name));
             const nameWords = nameNorm.split(/\s+/).filter(w => w.length > 2);
-            const firstWordStem = getStem(nameWords[0], 5);
+            const firstWordStem = nameWords[0] ? getStem(nameWords[0], 5) : '';
             
+            // 0. Поиск по aliases (разговорные/социальные варианты → каноническое название)
+            for (const ex of exercises) {
+                const aliases = ex.aliases || [];
+                for (const a of aliases) {
+                    if (normalizeText(String(a)) === nameNorm) return ex;
+                }
+            }
+            
+            // 0a. Отведение плеча ≠ отведение гантели назад (разные упражнения!)
+            if (nameNorm.includes('отведение плеча') && !nameNorm.includes('гантели назад')) {
+                const lateral = exercises.find(e => (normalizeText(e.name).includes('махи') || normalizeText(e.name).includes('отведение')) && (e.category || '').toLowerCase().includes('плеч'));
+                if (lateral) return lateral;
+            }
+            if (nameNorm.includes('отведение гантели назад')) {
+                const kickback = exercises.find(e => normalizeText(e.name).includes('гантел') && (e.category || '').toLowerCase().includes('рук'));
+                if (kickback) return kickback;
+            }
             // 0. ЯВНЫЕ ПРАВИЛА - 100% точность для известных паттернов
             for (const rule of EXPLICIT_EXERCISE_RULES) {
                 if (rule.pattern.test(nameNorm)) {
@@ -4999,11 +5022,11 @@
                     def: { 'Грудь': 0.6, 'Передняя дельта': 0.2, 'Трицепс': 0.2 }
                 },
                 'Плечи': {
-                    kw: ['жим сид', 'жим плеч', 'армей', 'махи', 'дельт', 'плечи', 'жим вверх'],
+                    kw: ['жим сид', 'жим плеч', 'армей', 'махи', 'дельт', 'плечи', 'жим вверх', 'отведение плеча', 'отведение руки в сторону', 'махи в сторону'],
                     def: { 'Передняя дельта': 0.35, 'Средняя дельта': 0.35, 'Задняя дельта': 0.3 }
                 },
                 'Руки': {
-                    kw: ['бицепс', 'трицепс', 'сгиб рук', 'разгиб рук', 'французск', 'молот', 'на блоке', 'кик-бэк'],
+                    kw: ['бицепс', 'трицепс', 'сгиб рук', 'разгиб рук', 'французск', 'молот', 'на блоке', 'кик-бэк', 'отведение гантели назад'],
                     def: { 'Бицепс': 0.5, 'Трицепс': 0.5 }
                 },
                 'Корпус': {
@@ -5025,7 +5048,10 @@
                     }
                     if (cat === 'Руки') {
                         if (n.includes('бицепс') || n.includes('молот') || n.includes('сгиб')) coeffs = { 'Бицепс': 1.0 };
-                        else if (n.includes('трицепс') || n.includes('французск') || n.includes('разгиб') || n.includes('блок')) coeffs = { 'Трицепс': 1.0 };
+                        else if (n.includes('трицепс') || n.includes('французск') || n.includes('разгиб') || n.includes('блок') || n.includes('отведение гантели назад')) coeffs = { 'Трицепс': 1.0 };
+                    }
+                    if (cat === 'Плечи') {
+                        if (n.includes('отведение плеча') || n.includes('махи в сторон') || n.includes('отведение руки')) coeffs = { 'Средняя дельта': 0.7, 'Передняя дельта': 0.2, 'Задняя дельта': 0.1 };
                     }
                     if (cat === 'Спина') {
                         if (n.includes('верхн') || n.includes('широч')) coeffs = { 'Широчайшие': 0.8, 'Бицепс': 0.2 };
@@ -5499,6 +5525,7 @@
                 workoutState.parsedWorkout = null;
                 workoutState.workoutName = '';
                 workoutState.workoutRPE = null;
+                workoutState.workoutDate = null;
                 customCoeffs = {}; // Сбрасываем кастомные коэффициенты
                 
                 document.getElementById('workoutInput').value = '';
@@ -5607,9 +5634,10 @@
                 }
                 
                 // Start session
+                const workoutDate = document.getElementById('workoutDateInput')?.value || new Date().toISOString().split('T')[0];
                 const sessionResult = await apiCall('startSession', {
                     clientId: currentClient.id,
-                    date: new Date().toISOString().split('T')[0],
+                    date: workoutDate,
                     splitType: workoutName,
                     notes: notesText
                 });
@@ -5709,6 +5737,7 @@
                 workoutState.parsedWorkout = null;
                 workoutState.workoutName = '';
                 workoutState.workoutRPE = 0;
+                workoutState.workoutDate = null;
                 workoutState.editingSessionId = null; // Сбрасываем режим редактирования
                 customCoeffs = {}; // Сбрасываем кастомные коэффициенты
                 
@@ -6198,6 +6227,7 @@
             
             workoutState.workoutName = session.splitType || '';
             workoutState.workoutRPE = session.rating || 0;
+            workoutState.workoutDate = session.date || new Date().toISOString().split('T')[0];
             workoutState.editingSessionId = sessionId; // Для обновления вместо создания новой
             
             // Закрываем модальное окно просмотра
