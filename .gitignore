@@ -29,3 +29,6 @@ npm-debug.log*
 # Build outputs
 dist/
 build/
+
+# Git temp
+.git-commit-msg.txt
