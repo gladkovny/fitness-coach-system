@@ -21,6 +21,7 @@
 | 00009 | exercises_bodyweight_ratio | ✅ | 31.01.2026 | Колонка exercises.bodyweight_ratio есть, у «Своё тело» — значения |
 | 00010 | client_profile_weight | ✅ | 31.01.2026 | Комментарий на clients.profile (документация) |
 | 00011 | exercises_aliases | ☐ / ✅ | | Колонка exercises.aliases, алиасы заполнены |
+| 00012 | mandatory_tasks | ☐ / ✅ | | Таблицы mandatory_tasks, mandatory_task_log |
 
 ---
 

@@ -27,9 +27,30 @@ Context7 подгружает актуальную документацию би
 
 ---
 
-## Шаг 3. Правило (уже в .cursorrules)
+## Шаг 3. Автоматическое срабатывание (обязательно)
 
-В проекте настроено **автоматическое** использование Context7: AI сам подтягивает документацию при задачах с Supabase, Chart.js и другими библиотеками. Явный промпт «use context7» не нужен.
+Context7 **по умолчанию требует** явный промпт «use context7». Чтобы он работал автоматически, нужны **оба** пункта:
+
+### 3.1. Project Rule (уже создано)
+
+В проекте есть `.cursor/rules/context7-auto.mdc` с `alwaysApply: true` — правило всегда в контексте и предписывает AI вызывать Context7 при задачах с библиотеками.
+
+### 3.2. User Rule в Cursor Settings (добавь вручную)
+
+Без этого Context7 может не срабатывать автоматически.
+
+1. Открой **Cursor** → **Settings…** → **Cursor Settings** → **Rules and Commands**
+   - Или нажми `Ctrl+Shift+P` (Win) / `Cmd+Shift+P` (Mac) → введи «Cursor Settings»
+2. В разделе **User Rules** нажми **+ Add Rule**
+3. Вставь текст правила:
+
+```
+Always use Context7 MCP when I ask about library documentation, API references, or need code examples from external packages. For Supabase, Chart.js, RLS, Edge Functions — invoke Context7 as the first action before answering or writing code.
+```
+
+4. Сохрани правило
+
+После этого Context7 должен вызываться автоматически при вопросах про Supabase, Chart.js и другие библиотеки, без «use context7» в промпте.
 
 ---
 

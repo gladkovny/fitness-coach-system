@@ -3827,11 +3827,13 @@
             
             console.log(`Local parser: ${localCount}/${lineCount} exercises`);
             
-            // Сохраняем текущее название тренировки
+            // Сохраняем текущее название тренировки и ввод для контекстной коррекции
             const currentName = document.getElementById('workoutNameInput')?.value || workoutState.workoutName || '';
+            workoutState.lastRecognizeInput = text;
             
             // Функция для добавления упражнений (не замены!)
             const appendExercises = (newResult) => {
+                fixAIResultForShoulderAbduction(newResult, text);
                 const enriched = enrichParsedWorkout(newResult);
                 if (!workoutState.parsedWorkout || !workoutState.parsedWorkout.exercises) {
                     workoutState.parsedWorkout = enriched;
@@ -3897,12 +3899,48 @@
             }
         }
         
+        // Коррекция AI: "Отведение плеча в тренажере" (плечи) ≠ "Отведение гантели назад" (трицепс)
+        function fixAIResultForShoulderAbduction(result, inputText) {
+            if (!result?.exercises || !inputText) return;
+            const t = inputText.trim().toLowerCase().replace(/ё/g, 'е');
+            if (!t.includes('отведение плеча') || !t.includes('тренажер') || t.includes('отведение гантели назад')) return;
+            
+            result.exercises.forEach(ex => {
+                const n = (ex.name || '').toLowerCase();
+                if ((n.includes('отведение гантели') && n.includes('назад')) || n.includes('гантели назад')) {
+                    ex.name = 'Отведение плеча в тренажере';
+                    ex.category = 'Плечи';
+                    // Расширяем подходы: "12,5 кг на 10 раз 3 подхода" → 3 подхода
+                    const m = t.match(/отведение плеча[^]*?(\d+(?:[.,]\d+)?)\s*кг\s+на\s+(\d+)\s+раз\s+(\d+)\s+подход(?:а|ов)?/i);
+                    if (m && ex.sets?.length === 1) {
+                        const [, wStr, rStr, nStr] = m;
+                        const w = parseFloat((wStr || '0').replace(',', '.'));
+                        const r = parseInt(rStr || '0', 10);
+                        const n = parseInt(nStr || '1', 10);
+                        if (n > 1) ex.sets = Array(n).fill(null).map(() => ({ weight: w, reps: r }));
+                    }
+                }
+            });
+        }
+        
         // Обогащение распарсенных упражнений данными из базы
         function enrichParsedWorkout(result) {
             if (!result || !result.exercises) return result;
             
+            const inputText = (workoutState.lastRecognizeInput || '').toLowerCase().replace(/ё/g, 'е');
+            const inputHasShoulderMachine = inputText.includes('отведение плеча') && inputText.includes('тренажер');
+            
             result.exercises = result.exercises.map(ex => {
-                const dbEx = getExerciseFromDB(ex.name);
+                let exName = ex.name || '';
+                if (inputHasShoulderMachine && !inputText.includes('отведение гантели назад')) {
+                    const n = exName.toLowerCase();
+                    if ((n.includes('отведение гантели') && n.includes('назад')) || n.includes('гантели назад')) {
+                        exName = 'Отведение плеча в тренажере';
+                        ex.category = 'Плечи';
+                        ex.name = exName;
+                    }
+                }
+                const dbEx = getExerciseFromDB(exName);
                 
                 // Автоопределение унилатеральности по тексту
                 const nameLower = ex.name.toLowerCase();
