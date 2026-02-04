@@ -3970,14 +3970,12 @@
 
         console.log(`Local parser: ${localCount}/${lineCount} exercises`);
 
-        // Сохраняем текущее название тренировки и ввод для контекстной коррекции
+        // Сохраняем текущее название тренировки
         const currentName =
           document.getElementById('workoutNameInput')?.value || workoutState.workoutName || '';
-        workoutState.lastRecognizeInput = text;
 
         // Функция для добавления упражнений (не замены!)
         const appendExercises = (newResult) => {
-          fixAIResultForShoulderAbduction(newResult, text);
           const enriched = enrichParsedWorkout(newResult);
           if (!workoutState.parsedWorkout || !workoutState.parsedWorkout.exercises) {
             workoutState.parsedWorkout = enriched;
@@ -4042,65 +4040,73 @@
         }
       }
 
-      // Коррекция AI: "Отведение плеча в тренажере" (плечи) ≠ "Отведение гантели назад" (трицепс)
-      function fixAIResultForShoulderAbduction(result, inputText) {
-        if (!result?.exercises || !inputText) return;
-        const t = inputText.trim().toLowerCase().replace(/ё/g, 'е');
-        if (
-          !t.includes('отведение плеча') ||
-          !t.includes('тренажер') ||
-          t.includes('отведение гантели назад')
-        )
-          return;
+      // Позиции, которые могут быть в названии в скобках — переносим в поле «Позиция»
+      const KNOWN_POSITIONS = [
+        'в висе',
+        'на перекладине',
+        'в упоре',
+        'на брусьях',
+        'сидя',
+        'стоя',
+        'лёжа',
+        'в наклоне',
+        'на скамье',
+        'наклонная',
+      ];
 
-        result.exercises.forEach((ex) => {
-          const n = (ex.name || '').toLowerCase();
-          if (
-            (n.includes('отведение гантели') && n.includes('назад')) ||
-            n.includes('гантели назад')
-          ) {
-            ex.name = 'Отведение плеча в тренажере';
-            ex.category = 'Плечи';
-            // Расширяем подходы: "12,5 кг на 10 раз 3 подхода" → 3 подхода
-            const m = t.match(
-              /отведение плеча[^]*?(\d+(?:[.,]\d+)?)\s*кг\s+на\s+(\d+)\s+раз[^]*?(\d+)\s+подход(?:а|ов)?/i
-            );
-            if (m && ex.sets?.length === 1) {
-              const [, wStr, rStr, nStr] = m;
-              const w = parseFloat((wStr || '0').replace(',', '.'));
-              const r = parseInt(rStr || '0', 10);
-              const n = parseInt(nStr || '1', 10);
-              if (n > 1)
-                ex.sets = Array(n)
-                  .fill(null)
-                  .map(() => ({ weight: w, reps: r }));
-            }
-          }
-        });
+      function extractPositionFromName(ex) {
+        if (!ex.name || ex.position) return ex;
+        const m = ex.name.match(/\s+\(([^)]+)\)\s*$/);
+        if (!m) return ex;
+        const pos = m[1].trim().toLowerCase().replace(/ё/g, 'е');
+        if (KNOWN_POSITIONS.some((p) => pos === p || pos.includes(p) || p.includes(pos))) {
+          return {
+            ...ex,
+            name: ex.name.replace(/\s*\([^)]+\)\s*$/, '').trim(),
+            position: ex.position || m[1].trim(),
+          };
+        }
+        return ex;
       }
+
+      // Канонические упражнения с жёсткой привязкой (обход неоднозначного getExerciseFromDB)
+      const CANONICAL_EXERCISE_OVERRIDES = [
+        {
+          match: (n) =>
+            n.includes('отведение плеча') && n.includes('тренажер') && !n.includes('гантели назад'),
+          name: 'Отведение плеча в тренажере',
+          category: 'Плечи',
+          coeffs: { 'Средняя дельта': 0.5, 'Передняя дельта': 0.25, 'Задняя дельта': 0.25 },
+        },
+      ];
 
       // Обогащение распарсенных упражнений данными из базы
       function enrichParsedWorkout(result) {
         if (!result || !result.exercises) return result;
 
-        const inputText = (workoutState.lastRecognizeInput || '').toLowerCase().replace(/ё/g, 'е');
-        const inputHasShoulderMachine =
-          inputText.includes('отведение плеча') && inputText.includes('тренажер');
-
         result.exercises = result.exercises.map((ex) => {
-          let exName = ex.name || '';
-          if (inputHasShoulderMachine && !inputText.includes('отведение гантели назад')) {
-            const n = exName.toLowerCase();
-            if (
-              (n.includes('отведение гантели') && n.includes('назад')) ||
-              n.includes('гантели назад')
-            ) {
-              exName = 'Отведение плеча в тренажере';
-              ex.category = 'Плечи';
-              ex.name = exName;
+          const nameNorm = (ex.name || '').toLowerCase().replace(/ё/g, 'е');
+
+          // Жёсткий override для известных паттернов — до любых DB-запросов
+          for (const ov of CANONICAL_EXERCISE_OVERRIDES) {
+            if (ov.match(nameNorm)) {
+              const isUnilateralByText =
+                /с одной ног|на каждую|поочерёдно|поочередно|одной рук|каждую рук|односторонн/.test(
+                  nameNorm
+                );
+              return extractPositionFromName({
+                ...ex,
+                name: ov.name,
+                category: ov.category,
+                laterality: 'bilateral',
+                unilateral: isUnilateralByText || ex.unilateral || false,
+                equipment: ex.equipment || '',
+                position: ex.position || '',
+              });
             }
           }
-          const dbEx = getExerciseFromDB(exName);
+
+          const dbEx = getExerciseFromDB(ex.name || '');
 
           // Автоопределение унилатеральности по тексту
           const nameLower = ex.name.toLowerCase();
@@ -4116,30 +4122,29 @@
               (dbEx.laterality === 'canBeUnilateral' && isUnilateralByText) ||
               ex.unilateral;
 
-            // Используем НАЗВАНИЕ из базы (там правильное полное название)
-            // Но equipment и position берём из распарсенного, если есть
-            return {
+            // Название из базы; если в нём есть позиция в скобках — переносим в поле Позиция
+            return extractPositionFromName({
               ...ex,
-              name: dbEx.name, // Название из базы!
+              name: dbEx.name,
               category: dbEx.category || ex.category || 'Другое',
               laterality: dbEx.laterality || 'bilateral',
               unilateral: shouldBeUnilateral,
               equipment: ex.equipment || '',
               position: ex.position || '',
-            };
+            });
           }
 
           // Если не в базе - используем AI для определения категории
           const aiResult = aiGuessCoeffs(ex.name);
 
-          return {
+          return extractPositionFromName({
             ...ex,
             category: aiResult.category || ex.category || 'Другое',
             laterality: 'bilateral',
             unilateral: isUnilateralByText || ex.unilateral || false,
             equipment: ex.equipment || '',
             position: ex.position || '',
-          };
+          });
         });
 
         return result;
@@ -4167,11 +4172,12 @@
         // Применяем контекстные правила (например "сгибание ног в висе" → "подъём ног в висе")
         line = applyContextRules(line);
 
-        // Normalize: число×число, число*число, число х число → числоxчисло
+        // Normalize: число×число, число*число, числохчисло (Cyrillic х между цифрами) → числоxчисло
         line = line
           .replace(/×/g, 'x')
+          .replace(/(\d)[хХ](\d)/g, '$1x$2') // 20х12 → 20x12
           .replace(/(\d)\s*\*\s*(\d)/g, '$1x$2')
-          .replace(/(\d)\s*х\s*(\d)/gi, '$1x$2')
+          .replace(/(\d)\s*[xх×]\s*(\d)/gi, '$1x$2')
           .replace(/\s+/g, ' ');
 
         let sets = [];
@@ -4204,7 +4210,14 @@
         }
 
         // Извлекаем позицию (только позиции ТЕЛА!)
+        // Порядок важен: более специфичные — выше (наклонная скамья ДО лёжа)
         const positionPatterns = [
+          // Позиции на скамье (до лёжа — иначе "лежа" перехватит "на наклонной скамье")
+          { pattern: /на\s+наклонн[а-яё]*\s+скамь[а-яё]*/i, value: 'наклонная' },
+          { pattern: /наклонн[а-яё]*\s+скамь[а-яё]*/i, value: 'наклонная' },
+          { pattern: /в\s+наклонн[а-яё]*/i, value: 'наклонная' },
+          { pattern: /наклонн[а-яё]*/i, value: 'наклонная' },
+          { pattern: /на\s+скамье/i, value: 'на скамье' },
           // Позиции тела
           { pattern: /сидя/i, value: 'сидя' },
           { pattern: /стоя/i, value: 'стоя' },
@@ -4213,12 +4226,6 @@
           { pattern: /в\s+упоре/i, value: 'в упоре' },
           { pattern: /с\s+упором/i, value: 'с упором' },
           { pattern: /в\s+висе/i, value: 'в висе' },
-          // Позиции на скамье
-          { pattern: /на\s+наклонн[а-яё]*\s+скамь[а-яё]*/i, value: 'наклонная' },
-          { pattern: /наклонн[а-яё]*\s+скамь[а-яё]*/i, value: 'наклонная' },
-          { pattern: /в\s+наклонн[а-яё]*/i, value: 'наклонная' },
-          { pattern: /наклонн[а-яё]*/i, value: 'наклонная' },
-          { pattern: /на\s+скамье/i, value: 'на скамье' },
         ];
 
         for (const pp of positionPatterns) {
@@ -4435,11 +4442,57 @@
           };
         }
 
+        const hasKgNa = /\d+\s*кг\s*на\s*\d+/i.test(line);
+
+        // ═══════════════════════════════════════════════════════════
+        // Pattern 4b: "Скручивания в тренажере 10 кг 20 раз" — ДО multiRaz!
+        // Иначе "10 кг 20 раз" ошибочно парсится как "20 раз" без веса
+        // ═══════════════════════════════════════════════════════════
+        if (!hasKgNa) {
+          const patternKgRaz = line.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*кг\s+(\d+)\s*раз/i);
+          if (patternKgRaz) {
+            exerciseName = cleanExerciseName(patternKgRaz[1]);
+            sets.push({
+              weight: parseFloat(patternKgRaz[2].replace(',', '.')),
+              reps: parseInt(patternKgRaz[3]),
+            });
+            return {
+              name: exerciseName,
+              sets,
+              category: 'Другое',
+              equipment,
+              position,
+              unilateral: unilateralByText,
+            };
+          }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // Pattern 3b: "Подтягивания 11 раз, 5 раз, 5 раз 5 раз" — несколько "N раз"
+        // ═══════════════════════════════════════════════════════════
+        if (!hasKgNa) {
+          const multiRaz = line.match(/^(.+?)\s+((?:\d+\s*раз[а-яё]*\s*[,]?\s*)+)/i);
+          if (multiRaz) {
+            const nums = [...multiRaz[2].matchAll(/(\d+)\s*раз/gi)].map((m) => parseInt(m[1]));
+            if (nums.length >= 1) {
+              exerciseName = cleanExerciseName(multiRaz[1]);
+              nums.forEach((r) => sets.push({ weight: 0, reps: r }));
+              return {
+                name: exerciseName,
+                sets,
+                category: 'Другое',
+                equipment,
+                position,
+                unilateral: unilateralByText,
+              };
+            }
+          }
+        }
+
         // ═══════════════════════════════════════════════════════════
         // Pattern 4: "Подтягивания 10 раз" или "Подтягивания 10, 8, 6 раз"
         // НЕ срабатывает если есть "кг на" (это Pattern 5)
         // ═══════════════════════════════════════════════════════════
-        const hasKgNa = /\d+\s*кг\s*на\s*\d+/i.test(line);
         if (!hasKgNa) {
           const simpleReps = line.match(/^(.+?)\s+(\d+(?:\s*[,;]\s*\d+)*)\s*(?:раз|повтор)/i);
           if (simpleReps) {
@@ -4463,19 +4516,27 @@
         }
 
         // ═══════════════════════════════════════════════════════════
-        // Pattern 5: "Тяга 40 кг на 15 раз, 50 кг на 10 раз" или "40 на 15; 50 на 10"
+        // Pattern 5: "Тяга 40 кг на 15 раз, 50 кг на 10 раз" или "27 кг на 15 раз, 2 подхода"
         // ═══════════════════════════════════════════════════════════
         const hasMultipleSets = line.match(/(\d+(?:[.,]\d+)?)\s*(?:кг)?\s*на\s*(\d+)/gi);
         if (hasMultipleSets && hasMultipleSets.length >= 1) {
-          // Находим название - всё до первого числа
           const firstNumMatch = line.match(/^(.+?)\s+\d/);
           if (firstNumMatch) {
             exerciseName = cleanExerciseName(firstNumMatch[1]);
-            // Ищем все "вес (кг) на повторения"
             const allSets = [...line.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:кг)?\s*на\s*(\d+)/gi)];
             allSets.forEach((m) => {
               sets.push({ weight: parseFloat(m[1].replace(',', '.')), reps: parseInt(m[2]) });
             });
+            // "27 кг на 15 раз, 2 подхода" → 2 одинаковых подхода
+            const setsModifier = line.match(/[,.\s]+(\d+)\s*подход(?:а|ов)?/i);
+            if (setsModifier && sets.length === 1) {
+              const numSets = parseInt(setsModifier[1]);
+              if (numSets > 1) {
+                const base = sets[0];
+                sets.length = 0;
+                for (let i = 0; i < numSets; i++) sets.push({ ...base });
+              }
+            }
             if (sets.length > 0) {
               return {
                 name: exerciseName,
@@ -4586,19 +4647,30 @@
         return null;
       }
 
-      // Упражнения, где equipment/position - часть названия (не убираем!)
-      // Формат: фраза в названии → что сохранять
+      // Упражнения, где "в тренажере" / тип тренажёра — часть идентичности (не дублирование equipment)
+      const MACHINE_IN_NAME =
+        /в\s+(наклонн[а-яё]*|блочн[а-яё]*|рычажн[а-яё]*)?\s*тренажер[а-яё]*|гакк/i;
+      const INCLINE_BENCH = /на\s*наклонн[а-яё]*\s*скамь[а-яё]*|наклонн[а-яё]*\s*скамь[а-яё]*/i;
       const EMBEDDED_NAME_PARTS = [
+        // Жим лёжа в рычажном/любом тренажере ≠ жим со штангой
+        { check: /жим.*(л[её]ж|грудь|штанг|гантел)/i, keep: MACHINE_IN_NAME },
+        // Приседания в тренажере / гакк ≠ присед со штангой
+        { check: /присед|приседани/i, keep: MACHINE_IN_NAME },
+        // Сгибание/разгибание рук, отведение плеча в тренажере ≠ с гантелями
+        { check: /сгибан.*(рук|плеч)|разгибан.*рук|отведени/i, keep: MACHINE_IN_NAME },
         // "на тумбу" - часть названия для запрыгиваний
         { check: /запрыгивани|прыжки/i, keep: /на\s+тумб[уыеа]/i },
         // "лёжа" - часть названия для жима лёжа
         { check: /жим.*л[её]жа|л[её]жа.*жим/i, keep: /л[её]жа/i },
+        // "на наклонной скамье" - жим на наклонной ≠ жим лёжа
+        { check: /жим.*(наклон|л[её]ж|грудь)/i, keep: INCLINE_BENCH },
         // "в наклоне" - часть названия для тяги в наклоне
         { check: /тяга.*в\s*наклоне|в\s*наклоне.*тяга/i, keep: /в\s*наклоне/i },
         // "в висе" - часть названия для подъёма ног в висе
         { check: /подъ[её]м\s+ног.*в\s+висе|в\s+висе.*подъ[её]м/i, keep: /в\s+висе/i },
-        // "на брусьях" - часть названия для отжиманий
+        // "на брусьях" - для отжиманий И для скручиваний (разные упражнения!)
         { check: /отжимани.*на\s+брусьях/i, keep: /на\s+брусьях/i },
+        { check: /скручиван.*(в\s+упоре|на\s+брусьях)/i, keep: /(в\s+упоре|на\s+брусьях)/i },
         // "на перекладине" - часть названия для подтягиваний
         { check: /подтягивани/i, keep: /на\s+перекладин[а-яё]*/i },
       ];
@@ -4628,13 +4700,18 @@
         // Функция проверки - нужно ли сохранять часть
         const shouldKeep = (pattern) => keepPatterns.some((kp) => kp.source === pattern.source);
 
-        // Убираем оборудование из названия
-        name = name.replace(/\s+в\s+наклонн[а-яё]*\s+тренажер[а-яё]*/gi, '');
-        name = name.replace(/\s+в\s+блочн[а-яё]*\s+тренажер[а-яё]*/gi, '');
-        name = name.replace(/\s+в\s+рычажн[а-яё]*\s+тренажер[а-яё]*/gi, '');
-        name = name.replace(/\s+в\s+тренажер[а-яё]*/gi, '');
-        name = name.replace(/\s+на\s+наклонн[а-яё]*\s+скамь[а-яё]*/gi, '');
-        name = name.replace(/\s+наклонн[а-яё]*\s+скамь[а-яё]*/gi, '');
+        // Убираем "в тренажере" и варианты только если это не часть идентичности упражнения
+        if (!shouldKeep(MACHINE_IN_NAME)) {
+          name = name.replace(/\s+в\s+наклонн[а-яё]*\s+тренажер[а-яё]*/gi, '');
+          name = name.replace(/\s+в\s+блочн[а-яё]*\s+тренажер[а-яё]*/gi, '');
+          name = name.replace(/\s+в\s+рычажн[а-яё]*\s+тренажер[а-яё]*/gi, '');
+          name = name.replace(/\s+в\s+тренажер[а-яё]*/gi, '');
+          name = name.replace(/\s+гакк(\s+тренажер)?[а-яё]*/gi, '');
+        }
+        if (!shouldKeep(INCLINE_BENCH)) {
+          name = name.replace(/\s+на\s+наклонн[а-яё]*\s+скамь[а-яё]*/gi, '');
+          name = name.replace(/\s+наклонн[а-яё]*\s+скамь[а-яё]*/gi, '');
+        }
         name = name.replace(
           /\s+(с\s+)?(z\s*гриф[а-яё]*|ez\s*гриф[а-яё]*|штанг[а-яё]*|гантел[а-яё]*|на\s+блоке|на\s+скамье|грифом|с\s+грифом|блочн[а-яё]*)/gi,
           ''
@@ -4913,31 +4990,83 @@
         const nameWords = nameNorm.split(/\s+/).filter((w) => w.length > 2);
         const firstWordStem = nameWords[0] ? getStem(nameWords[0], 5) : '';
 
+        // 0-ПРИОРИТЕТ: «Отведение плеча в тренажере» = Махи в стороны (средняя дельта)
+        // ДО любых других проверок — иначе stem/alias могут вернуть «Отведение гантели назад»
+        if (
+          nameNorm.includes('отведение плеча') &&
+          nameNorm.includes('тренажер') &&
+          !nameNorm.includes('гантели назад')
+        ) {
+          const lateral = exercises.find((e) => {
+            const n = normalizeText(e.name);
+            return (
+              (n.includes('махи') && n.includes('сторон')) ||
+              (e.aliases || []).some((a) => normalizeText(String(a)).includes('отведение плеча'))
+            );
+          });
+          if (lateral) return lateral;
+        }
+
         // 0. Поиск по aliases (разговорные/социальные варианты → каноническое название)
         for (const ex of exercises) {
           const aliases = ex.aliases || [];
           for (const a of aliases) {
-            if (normalizeText(String(a)) === nameNorm) return ex;
+            const aNorm = normalizeText(String(a));
+            if (aNorm === nameNorm || nameNorm.includes(aNorm)) {
+              // Не путать: "скручивания в упоре на брусьях" ≠ "отжимания на брусьях"
+              if (nameNorm.includes('скручиван') && normalizeText(ex.name).includes('отжимани'))
+                continue;
+              // «Отведение плеча в тренажере» ≠ «Отведение гантели назад»
+              if (
+                nameNorm.includes('отведение плеча') &&
+                nameNorm.includes('тренажер') &&
+                !nameNorm.includes('гантели')
+              )
+                if (
+                  normalizeText(ex.name).includes('гантели') &&
+                  normalizeText(ex.name).includes('назад')
+                )
+                  continue;
+              return ex;
+            }
           }
         }
 
-        // 0a. Отведение плеча ≠ отведение гантели назад (разные упражнения!)
         if (nameNorm.includes('отведение плеча') && !nameNorm.includes('гантели назад')) {
-          const lateral = exercises.find(
-            (e) =>
-              (normalizeText(e.name).includes('махи') ||
-                normalizeText(e.name).includes('отведение')) &&
+          const anyLateral = exercises.find((e) => {
+            const n = normalizeText(e.name);
+            // «Отведение плеча в тренажере» ≠ «Отведение гантели назад» — при «тренажер» во вводе исключаем гантели назад
+            if (nameNorm.includes('тренажер') && n.includes('гантели') && n.includes('назад'))
+              return false;
+            return (
+              (n.includes('махи') || n.includes('отведение')) &&
               (e.category || '').toLowerCase().includes('плеч')
-          );
-          if (lateral) return lateral;
+            );
+          });
+          if (anyLateral) return anyLateral;
         }
-        if (nameNorm.includes('отведение гантели назад')) {
-          const kickback = exercises.find(
-            (e) =>
-              normalizeText(e.name).includes('гантел') &&
-              (e.category || '').toLowerCase().includes('рук')
-          );
-          if (kickback) return kickback;
+        // 0c. Жим на наклонной скамье → Жим лёжа (наклонная) и т.п.
+        if (
+          nameNorm.includes('жим') &&
+          (nameNorm.includes('наклон') || nameNorm.includes('наклонн'))
+        ) {
+          const incline = exercises.find((e) => {
+            const n = normalizeText(e.name);
+            return n.includes('жим') && (n.includes('наклон') || n.includes('наклонн'));
+          });
+          if (incline) return incline;
+        }
+        // 0b. Отведение гантели назад = задняя дельта (в БД: "Задняя дельта (в наклоне)" или "Отведение гантели назад (в наклоне)")
+        if (nameNorm.includes('отведение гантели') && nameNorm.includes('назад')) {
+          const rearDelt = exercises.find((e) => {
+            const n = normalizeText(e.name);
+            return (
+              (n.includes('махи') && n.includes('наклон')) ||
+              n.includes('задняя дельта') ||
+              (n.includes('отведение') && n.includes('назад') && n.includes('гантел'))
+            );
+          });
+          if (rearDelt) return rearDelt;
         }
         // 0. ЯВНЫЕ ПРАВИЛА - 100% точность для известных паттернов
         for (const rule of EXPLICIT_EXERCISE_RULES) {
@@ -4958,7 +5087,18 @@
         const containedMatches = exercises
           .filter((e) => {
             const dbNorm = normalizeText(e.name);
-            return nameNorm.includes(dbNorm);
+            if (!nameNorm.includes(dbNorm)) return false;
+            // Скручивания ≠ Отжимания на брусьях (разные упражнения)
+            if (nameNorm.includes('скручиван') && dbNorm.includes('отжимани')) return false;
+            if (nameNorm.includes('подтягиван') && dbNorm.includes('отжимани')) return false;
+            // «Отведение плеча в тренажере» ≠ «Отведение гантели назад»
+            if (
+              nameNorm.includes('отведение плеча') &&
+              nameNorm.includes('тренажер') &&
+              !nameNorm.includes('гантели')
+            )
+              if (dbNorm.includes('гантели') && dbNorm.includes('назад')) return false;
+            return true;
           })
           .sort((a, b) => normalizeText(b.name).length - normalizeText(a.name).length);
 
@@ -5033,7 +5173,15 @@
         const stemMatches = exercises.filter((e) => {
           const dbNorm = normalizeText(e.name);
           const dbFirstStem = getStem(dbNorm.split(/\s+/)[0], 5);
-          return firstWordStem === dbFirstStem;
+          if (firstWordStem !== dbFirstStem) return false;
+          // «Отведение плеча в тренажере» ≠ «Отведение гантели назад» — разные упражнения!
+          if (
+            nameNorm.includes('отведение плеча') &&
+            nameNorm.includes('тренажер') &&
+            !nameNorm.includes('гантели')
+          )
+            if (dbNorm.includes('гантели') && dbNorm.includes('назад')) return false;
+          return true;
         });
 
         if (stemMatches.length > 0) {
@@ -5384,6 +5532,21 @@
       }
 
       function getExerciseCoeffs(exerciseName) {
+        // Канонические коэффициенты для однозначных упражнений (до DB)
+        const n = (exerciseName || '').toLowerCase().replace(/ё/g, 'е');
+        if (
+          n.includes('отведение плеча') &&
+          n.includes('тренажер') &&
+          !n.includes('гантели назад')
+        ) {
+          return {
+            coeffs: { 'Средняя дельта': 0.5, 'Передняя дельта': 0.25, 'Задняя дельта': 0.25 },
+            fromMaster: true,
+            category: 'Плечи',
+            subcategory: 'Средняя дельта',
+          };
+        }
+
         // Ищем упражнение в базе данных
         const dbEx = getExerciseFromDB(exerciseName);
 
@@ -5469,6 +5632,7 @@
               'отведение плеча',
               'отведение руки в сторону',
               'махи в сторону',
+              'отведение гантели назад', // задняя дельта (НЕ трицепс!)
             ],
             def: { 'Передняя дельта': 0.35, 'Средняя дельта': 0.35, 'Задняя дельта': 0.3 },
           },
@@ -5482,7 +5646,8 @@
               'молот',
               'на блоке',
               'кик-бэк',
-              'отведение гантели назад',
+              'разгибание предплечья',
+              'разгибание плеча', // длинная головка трицепса (overhead)
             ],
             def: { Бицепс: 0.5, Трицепс: 0.5 },
           },
@@ -5512,12 +5677,19 @@
                 n.includes('французск') ||
                 n.includes('разгиб') ||
                 n.includes('блок') ||
-                n.includes('отведение гантели назад')
+                n.includes('разгибание предплечья') ||
+                n.includes('кик-бэк')
               )
                 coeffs = { Трицепс: 1.0 };
             }
             if (cat === 'Плечи') {
               if (
+                n.includes('отведение гантели назад') ||
+                n.includes('махи в наклон') ||
+                (n.includes('разведен') && n.includes('наклон'))
+              )
+                coeffs = { 'Задняя дельта': 0.9, 'Средняя дельта': 0.1 };
+              else if (
                 n.includes('отведение плеча') ||
                 n.includes('махи в сторон') ||
                 n.includes('отведение руки')

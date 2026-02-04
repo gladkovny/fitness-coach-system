@@ -22,6 +22,8 @@
 | 00010 | client_profile_weight | ✅ | 31.01.2026 | Комментарий на clients.profile (документация) |
 | 00011 | exercises_aliases | ☐ / ✅ | | Колонка exercises.aliases, алиасы заполнены |
 | 00012 | mandatory_tasks | ☐ / ✅ | | Таблицы mandatory_tasks, mandatory_task_log |
+| 00013 | rear_delt_alias | ☐ / ✅ | | Алиас «отведение гантели назад» для задней дельты |
+| 00014 | lateral_raise_alias | ☐ / ✅ | | Алиас «отведение плеча в тренажере» для Махи в стороны |
 
 ---
 
