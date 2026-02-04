@@ -2,7 +2,7 @@
 
 Краткая сводка для контекста AI и новых участников.
 
-> **Обновлено:** 31.01.2026 — объединены правила из cursorrules v2, добавлены частые задачи, ошибки, ссылки на Project Rules (.cursor/rules/).
+> **Обновлено:** 28.01.2026 — добавлены pre-commit (Husky, lint-staged, npm test), тесты распознавания (tests/), скрипты и частые задачи по коммиту и кейсам распознавания.
 
 ---
 
@@ -154,6 +154,14 @@
 - Закоммитить с осмысленным сообщением (можно с префиксом разделов, например `[1][2] Описание`).
 - При смене этапа или статуса — обновить `docs/SYNC_STATUS.md`.
 
+### 3.13. Pre-commit и скрипты (Husky, lint-staged, тесты)
+
+- **Pre-commit (Husky):** при `git commit` автоматически выполняются:
+  1. **lint-staged** — для staged `*.js`: `eslint --fix`, `prettier --write`; для staged `*.html`: `prettier --write`.
+  2. **npm test** — тесты распознавания упражнений (`tests/recognition.test.js`). Если тесты или линт падают — коммит не создаётся.
+- **Скрипты в package.json:** `npm run lint`, `npm run format`, `npm test`. Конфиг lint-staged в `package.json`; хук — `.husky/pre-commit`.
+- **Тесты распознавания:** логика в `tests/recognition.js` (normalizeText, recognizeExercise, фикстура). При изменении распознавания — при необходимости обновить тесты и фикстуру.
+
 ---
 
 ## 4. Ключевые файлы и документы
@@ -172,18 +180,22 @@
 | `docs/CONTEXT7_SETUP.md` | Настройка Context7 MCP |
 | `docs/DASHBOARD_UPGRADE_PLAN.md` | План muscleLoad, exerciseProgress |
 | `.cursorrules` | Краткая ссылка на правила |
+| `tests/recognition.test.js`, `tests/recognition.js` | Тесты распознавания упражнений; запуск: `npm test` |
+| `.husky/pre-commit` | Pre-commit: lint-staged + npm test |
 
 ---
 
 ## 5. Структура проекта (кратко)
 
 ```
+tests/           — тесты: recognition.test.js, recognition.js (распознавание упражнений)
 deploy/master/   — сайт тренера (Supabase): login, dashboard, tracker
 deploy/mark/     — сайт Марка (GAS): dashboard, program
 src/             — исходники (синхронизировать с deploy при изменениях)
 supabase/        — миграции, функции, инструкции
 gas/             — Google Apps Script (legacy)
 docs/            — документация и правила
+.husky/          — pre-commit хук (lint-staged + npm test)
 .cursor/rules/   — Project Rules (context7-auto, low-resource-agent)
 .cursor/mcp.json — Context7 MCP (API ключ)
 ```
@@ -198,6 +210,8 @@ docs/            — документация и правила
 | Изменить стили | Общие → `css/common.css`, специфичные → в компоненте |
 | Добавить endpoint GAS | `gas/Master API_assessment.gs` → switch + функция |
 | Supabase-запрос | Context7 → актуальный синтаксис; проверить RLS |
+| Перед коммитом | Pre-commit запустит lint-staged (ESLint, Prettier) и `npm test`; при падении — исправить и снова коммитить |
+| Добавить кейс распознавания | Обновить фикстуру в `tests/recognition.js` и таблицу в `tests/recognition.test.js` |
 
 ---
 

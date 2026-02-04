@@ -4,7 +4,7 @@
  * [2] Backend, [3] Database
  */
 
-(function() {
+(function () {
   'use strict';
 
   if (typeof window.supabase === 'undefined' || !window.SUPABASE_URL) {
@@ -38,7 +38,7 @@
       getMandatoryTasks: getMandatoryTasksSupabase,
       logMandatoryTaskCompletion: logMandatoryTaskCompletionSupabase,
       updateMandatoryTasks: updateMandatoryTasksSupabase,
-      saveMandatoryTaskLog: saveMandatoryTaskLogSupabase
+      saveMandatoryTaskLog: saveMandatoryTaskLogSupabase,
     };
 
     const handler = handlers[action];
@@ -50,7 +50,8 @@
     if (!text || !text.trim()) return { success: false, error: 'Текст не передан' };
     const { data, error } = await supabase.functions.invoke('parse-workout', { body: { text } });
     if (error) return { success: false, error: error.message || 'Ошибка парсера' };
-    if (!data || data.success === false) return { success: false, error: data?.error || 'Ошибка парсера' };
+    if (!data || data.success === false)
+      return { success: false, error: data?.error || 'Ошибка парсера' };
     return data;
   }
 
@@ -60,10 +61,10 @@
       .select('id, name, email, status')
       .order('name');
     if (error) throw new Error(error.message);
-    const clients = (data || []).map(c => ({
+    const clients = (data || []).map((c) => ({
       id: c.id,
       name: c.name,
-      clientType: c.status === 'active' ? 'offline' : 'offline'
+      clientType: c.status === 'active' ? 'offline' : 'offline',
     }));
     return { clients };
   }
@@ -86,25 +87,27 @@
       modules_warmup: p.modules_warmup ?? false,
       modules_measurements: p.modules_measurements ?? false,
       modules_mandatory: p.modules_mandatory ?? true,
-      clientType: 'offline'
+      clientType: 'offline',
     };
     return { profile };
   }
 
   async function getExercisesSupabase({ clientId, search = '', category = '' }) {
-    let q = supabase.from('exercises').select('id, name, category, subcategory, equipment, muscle_coefficients, key, aliases');
+    let q = supabase
+      .from('exercises')
+      .select('id, name, category, subcategory, equipment, muscle_coefficients, key, aliases');
     if (category) q = q.eq('category', category);
     if (search) q = q.ilike('name', '%' + search + '%');
     const { data, error } = await q.order('name').limit(200);
     if (error) throw new Error(error.message);
-    const exercises = (data || []).map(e => ({
+    const exercises = (data || []).map((e) => ({
       id: e.key || e.id,
       name: e.name,
       category: e.category || 'Другое',
       subcategory: e.subcategory || '',
       equipment: e.equipment || '',
       muscleCoeffs: e.muscle_coefficients || {},
-      aliases: (e.aliases && Array.isArray(e.aliases)) ? e.aliases : []
+      aliases: e.aliases && Array.isArray(e.aliases) ? e.aliases : [],
     }));
     return { exercises };
   }
@@ -129,25 +132,33 @@
       .order('date', { ascending: false })
       .limit(limit);
     if (error) throw new Error(error.message);
-    const sessions = (data || []).map(s => ({
+    const sessions = (data || []).map((s) => ({
       id: s.id,
       sessionId: s.id,
       date: s.date,
       splitType: s.type || 'Тренировка',
       totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : 0,
-      rating: s.notes?.match(/RPE:\s*(\d+)/)?.[1] ? parseInt(s.notes.match(/RPE:\s*(\d+)/)[1]) : null,
-      notes: s.notes
+      rating: s.notes?.match(/RPE:\s*(\d+)/)?.[1]
+        ? parseInt(s.notes.match(/RPE:\s*(\d+)/)[1])
+        : null,
+      notes: s.notes,
     }));
     return { sessions };
   }
 
   async function getTrainingBlocksSupabase({ clientId }) {
-    const { data: programs } = await supabase.from('programs').select('id').eq('client_id', clientId);
+    const { data: programs } = await supabase
+      .from('programs')
+      .select('id')
+      .eq('client_id', clientId);
     if (!programs?.length) return { blocks: [] };
     const { data, error } = await supabase
       .from('training_blocks')
       .select('id, name, total_sessions, used_sessions, start_date, status')
-      .in('program_id', programs.map(p => p.id))
+      .in(
+        'program_id',
+        programs.map((p) => p.id)
+      )
       .order('start_date', { ascending: false });
     if (error) throw new Error(error.message);
     const blocks = (data || []).map((b, i) => ({
@@ -157,14 +168,14 @@
       totalSessions: b.total_sessions || 0,
       usedSessions: b.used_sessions || 0,
       startDate: b.start_date,
-      status: b.status || 'active'
+      status: b.status || 'active',
     }));
     return { blocks };
   }
 
   async function getActiveBlockSupabase({ clientId }) {
     const { blocks } = await getTrainingBlocksSupabase({ clientId });
-    const active = blocks.find(b => b.status === 'active') || blocks[0];
+    const active = blocks.find((b) => b.status === 'active') || blocks[0];
     return { block: active ? { blockId: active.blockId } : null };
   }
 
@@ -184,17 +195,28 @@
       .order('set_number');
     if (setsErr) throw new Error(setsErr.message);
 
-    const exIds = [...new Set((sets || []).map(s => s.exercise_id).filter(Boolean))];
+    const exIds = [...new Set((sets || []).map((s) => s.exercise_id).filter(Boolean))];
     const exMap = {};
     if (exIds.length) {
-      const { data: exs } = await supabase.from('exercises').select('id, name, category').in('id', exIds);
-      (exs || []).forEach(e => { exMap[e.id] = e; });
+      const { data: exs } = await supabase
+        .from('exercises')
+        .select('id, name, category')
+        .in('id', exIds);
+      (exs || []).forEach((e) => {
+        exMap[e.id] = e;
+      });
     }
 
     const byEx = {};
-    (sets || []).forEach(s => {
+    (sets || []).forEach((s) => {
       const exId = s.exercise_id || 'unknown';
-      if (!byEx[exId]) byEx[exId] = { exerciseId: exId, name: exMap[exId]?.name || 'Упражнение', category: exMap[exId]?.category || 'Другое', sets: [] };
+      if (!byEx[exId])
+        byEx[exId] = {
+          exerciseId: exId,
+          name: exMap[exId]?.name || 'Упражнение',
+          category: exMap[exId]?.category || 'Другое',
+          sets: [],
+        };
       byEx[exId].sets.push({ weight: Number(s.weight) || 0, reps: Number(s.reps) || 0 });
     });
 
@@ -206,22 +228,30 @@
         date: session.date,
         splitType: session.type || 'Тренировка',
         totalVolume: session.total_tonnage != null ? Number(session.total_tonnage) : 0,
-        rating: session.notes?.match(/RPE:\s*(\d+)/)?.[1] ? parseInt(session.notes.match(/RPE:\s*(\d+)/)[1]) : null,
-        notes: session.notes
+        rating: session.notes?.match(/RPE:\s*(\d+)/)?.[1]
+          ? parseInt(session.notes.match(/RPE:\s*(\d+)/)[1])
+          : null,
+        notes: session.notes,
       },
-      exercises
+      exercises,
     };
   }
 
   async function startSessionSupabase({ clientId, date, splitType, notes }) {
     const dateStr = (date || new Date().toISOString()).toString().split('T')[0];
     let blockId = null;
-    const { data: programs } = await supabase.from('programs').select('id').eq('client_id', clientId);
+    const { data: programs } = await supabase
+      .from('programs')
+      .select('id')
+      .eq('client_id', clientId);
     if (programs?.length) {
       const { data: block } = await supabase
         .from('training_blocks')
         .select('id')
-        .in('program_id', programs.map(p => p.id))
+        .in(
+          'program_id',
+          programs.map((p) => p.id)
+        )
         .eq('status', 'active')
         .limit(1)
         .maybeSingle();
@@ -236,7 +266,7 @@
         date: dateStr,
         type: splitType || 'Тренировка',
         status: 'in_progress',
-        notes: notes || null
+        notes: notes || null,
       })
       .select('id')
       .single();
@@ -262,11 +292,25 @@
     return created.id;
   }
 
-  async function addSetSupabase({ clientId, sessionId, exerciseId, exerciseName, category, weight, reps }) {
-    const nameToUse = (exerciseName || exerciseId || '').toString().replace(/\s*\([^)]*\)\s*$/, '').trim();
+  async function addSetSupabase({
+    clientId,
+    sessionId,
+    exerciseId,
+    exerciseName,
+    category,
+    weight,
+    reps,
+  }) {
+    const nameToUse = (exerciseName || exerciseId || '')
+      .toString()
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .trim();
     const exId = await findOrCreateExercise(nameToUse, category || 'Другое');
 
-    const { count } = await supabase.from('workout_sets').select('*', { count: 'exact', head: true }).eq('session_id', sessionId);
+    const { count } = await supabase
+      .from('workout_sets')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId);
     const setNumber = (count ?? 0) + 1;
 
     const { error } = await supabase.from('workout_sets').insert({
@@ -274,18 +318,27 @@
       exercise_id: exId,
       set_number: setNumber,
       reps: parseInt(reps) || 0,
-      weight: parseFloat(weight) || 0
+      weight: parseFloat(weight) || 0,
     });
     if (error) throw new Error(error.message);
     return { success: true };
   }
 
   async function finishSessionSupabase({ clientId, sessionId, rating }) {
-    const { data: sets } = await supabase.from('workout_sets').select('reps, weight').eq('session_id', sessionId);
+    const { data: sets } = await supabase
+      .from('workout_sets')
+      .select('reps, weight')
+      .eq('session_id', sessionId);
     let totalTonnage = 0;
-    (sets || []).forEach(s => { totalTonnage += (Number(s.weight) || 0) * (Number(s.reps) || 0); });
+    (sets || []).forEach((s) => {
+      totalTonnage += (Number(s.weight) || 0) * (Number(s.reps) || 0);
+    });
 
-    const { data: session } = await supabase.from('workout_sessions').select('notes').eq('id', sessionId).single();
+    const { data: session } = await supabase
+      .from('workout_sessions')
+      .select('notes')
+      .eq('id', sessionId)
+      .single();
     let notes = session?.notes || '';
     if (rating != null && rating > 0) {
       if (notes && !notes.includes('RPE:')) notes = notes + (notes ? '. ' : '') + 'RPE: ' + rating;
@@ -299,15 +352,28 @@
       .eq('client_id', clientId);
     if (error) throw new Error(error.message);
 
-    const { data: sess } = await supabase.from('workout_sessions').select('block_id').eq('id', sessionId).single();
+    const { data: sess } = await supabase
+      .from('workout_sessions')
+      .select('block_id')
+      .eq('id', sessionId)
+      .single();
     if (sess?.block_id) {
       try {
         const r = supabase.rpc('increment_block_used', { block_id: sess.block_id });
         if (r && typeof r.then === 'function') await r;
-      } catch (_) { /* RPC может отсутствовать — обновление блока ниже */ }
-      const { data: bl } = await supabase.from('training_blocks').select('used_sessions').eq('id', sess.block_id).single();
+      } catch (_) {
+        /* RPC может отсутствовать — обновление блока ниже */
+      }
+      const { data: bl } = await supabase
+        .from('training_blocks')
+        .select('used_sessions')
+        .eq('id', sess.block_id)
+        .single();
       if (bl) {
-        await supabase.from('training_blocks').update({ used_sessions: (bl.used_sessions || 0) + 1 }).eq('id', sess.block_id);
+        await supabase
+          .from('training_blocks')
+          .update({ used_sessions: (bl.used_sessions || 0) + 1 })
+          .eq('id', sess.block_id);
       }
     }
     return { success: true };
@@ -315,22 +381,45 @@
 
   async function deleteSessionSupabase({ clientId, sessionId }) {
     await supabase.from('workout_sets').delete().eq('session_id', sessionId);
-    const { data: sess } = await supabase.from('workout_sessions').select('block_id').eq('id', sessionId).single();
-    const { error } = await supabase.from('workout_sessions').delete().eq('id', sessionId).eq('client_id', clientId);
+    const { data: sess } = await supabase
+      .from('workout_sessions')
+      .select('block_id')
+      .eq('id', sessionId)
+      .single();
+    const { error } = await supabase
+      .from('workout_sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('client_id', clientId);
     if (error) throw new Error(error.message);
     if (sess?.block_id) {
-      const { data: bl } = await supabase.from('training_blocks').select('used_sessions').eq('id', sess.block_id).single();
+      const { data: bl } = await supabase
+        .from('training_blocks')
+        .select('used_sessions')
+        .eq('id', sess.block_id)
+        .single();
       if (bl && (bl.used_sessions || 0) > 0) {
-        await supabase.from('training_blocks').update({ used_sessions: bl.used_sessions - 1 }).eq('id', sess.block_id);
+        await supabase
+          .from('training_blocks')
+          .update({ used_sessions: bl.used_sessions - 1 })
+          .eq('id', sess.block_id);
       }
     }
     return { success: true };
   }
 
   async function createTrainingBlockSupabase({ clientId, totalSessions }) {
-    const { data: prog } = await supabase.from('programs').select('id').eq('client_id', clientId).limit(1).maybeSingle();
+    const { data: prog } = await supabase
+      .from('programs')
+      .select('id')
+      .eq('client_id', clientId)
+      .limit(1)
+      .maybeSingle();
     if (!prog) throw new Error('У клиента нет программы. Создайте программу в дашборде.');
-    await supabase.from('training_blocks').update({ status: 'completed' }).eq('program_id', prog.id);
+    await supabase
+      .from('training_blocks')
+      .update({ status: 'completed' })
+      .eq('program_id', prog.id);
     const { data, error } = await supabase
       .from('training_blocks')
       .insert({
@@ -339,12 +428,15 @@
         total_sessions: parseInt(totalSessions) || 10,
         used_sessions: 0,
         start_date: new Date().toISOString().split('T')[0],
-        status: 'active'
+        status: 'active',
       })
       .select('id')
       .single();
     if (error) throw new Error(error.message);
-    const { data: blocks } = await supabase.from('training_blocks').select('id').eq('program_id', prog.id);
+    const { data: blocks } = await supabase
+      .from('training_blocks')
+      .select('id')
+      .eq('program_id', prog.id);
     const blockId = (blocks || []).length;
     return { success: true, blockId };
   }
@@ -360,36 +452,38 @@
     if (tasksErr) throw new Error(tasksErr.message);
     const list = tasks || [];
     if (list.length === 0) return { tasks: [] };
-    const taskIds = list.map(t => t.id);
+    const taskIds = list.map((t) => t.id);
     const { data: logs } = await supabase
       .from('mandatory_task_log')
       .select('task_id')
       .eq('client_id', clientId)
       .in('task_id', taskIds);
     const countByTask = {};
-    (logs || []).forEach(log => {
+    (logs || []).forEach((log) => {
       countByTask[log.task_id] = (countByTask[log.task_id] || 0) + 1;
     });
-    const result = list.map(t => ({
+    const result = list.map((t) => ({
       id: t.id,
       name: t.name,
       description: t.category || '',
       target: '',
       active: t.active !== false,
-      completionCount: countByTask[t.id] || 0
+      completionCount: countByTask[t.id] || 0,
     }));
     return { tasks: result };
   }
 
   async function logMandatoryTaskCompletionSupabase({ clientId, sessionId, tasks }) {
     if (!clientId || !sessionId || !tasks || tasks.length === 0) return {};
-    const completed = tasks.filter(t => t.completed);
+    const completed = tasks.filter((t) => t.completed);
     if (completed.length === 0) return {};
-    const toInsert = completed.map(t => ({
-      client_id: clientId,
-      session_id: sessionId,
-      task_id: t.taskId
-    })).filter(r => r.task_id);
+    const toInsert = completed
+      .map((t) => ({
+        client_id: clientId,
+        session_id: sessionId,
+        task_id: t.taskId,
+      }))
+      .filter((r) => r.task_id);
     if (toInsert.length === 0) return {};
     const { error } = await supabase.from('mandatory_task_log').insert(toInsert);
     if (error) throw new Error(error.message);
@@ -399,8 +493,8 @@
   async function updateMandatoryTasksSupabase({ clientId, tasks }) {
     if (!clientId || !tasks || !Array.isArray(tasks)) return {};
     const existing = await supabase.from('mandatory_tasks').select('id').eq('client_id', clientId);
-    const existingIds = (existing.data || []).map(t => t.id);
-    const incoming = tasks.slice(0, 3).filter(t => t && (t.name || '').trim());
+    const existingIds = (existing.data || []).map((t) => t.id);
+    const incoming = tasks.slice(0, 3).filter((t) => t && (t.name || '').trim());
     for (let i = 0; i < incoming.length; i++) {
       const t = incoming[i];
       const payload = {
@@ -408,17 +502,21 @@
         name: (t.name || '').trim(),
         category: t.category || t.type || null,
         sort_order: i,
-        active: t.active !== false
+        active: t.active !== false,
       };
       if (t.id && existingIds.includes(t.id)) {
-        await supabase.from('mandatory_tasks').update(payload).eq('id', t.id).eq('client_id', clientId);
+        await supabase
+          .from('mandatory_tasks')
+          .update(payload)
+          .eq('id', t.id)
+          .eq('client_id', clientId);
       } else {
         const { error } = await supabase.from('mandatory_tasks').insert(payload);
         if (error) throw new Error(error.message);
       }
     }
-    const keptIds = incoming.filter(t => t.id).map(t => t.id);
-    const toDelete = existingIds.filter(id => !keptIds.includes(id));
+    const keptIds = incoming.filter((t) => t.id).map((t) => t.id);
+    const toDelete = existingIds.filter((id) => !keptIds.includes(id));
     if (toDelete.length) {
       await supabase.from('mandatory_tasks').delete().eq('client_id', clientId).in('id', toDelete);
     }
@@ -440,11 +538,11 @@
       sid = sess?.id;
     }
     const toInsert = tasks
-      .filter(t => t.taskId)
-      .map(t => ({
+      .filter((t) => t.taskId)
+      .map((t) => ({
         client_id: clientId,
         session_id: sid || null,
-        task_id: t.taskId
+        task_id: t.taskId,
       }));
     if (toInsert.length === 0) return { success: true };
     const { error } = await supabase.from('mandatory_task_log').insert(toInsert);
@@ -458,7 +556,7 @@
       .insert({
         name: (name || '').trim(),
         category: category || 'Другое',
-        equipment: equipment || null
+        equipment: equipment || null,
       })
       .select('id')
       .single();
@@ -467,15 +565,18 @@
   }
 
   async function saveDailyDataSupabase(params) {
-    const dateStr = (params?.date || new Date().toISOString().split('T')[0]);
-    const { error } = await supabase.from('daily_logs').upsert({
-      client_id: params.clientId,
-      date: dateStr,
-      weight: params?.weight,
-      sleep_hours: params?.sleepHours ?? params?.sleep_hours,
-      notes: params?.notes || null,
-      training_done: params?.training_done
-    }, { onConflict: 'client_id,date' });
+    const dateStr = params?.date || new Date().toISOString().split('T')[0];
+    const { error } = await supabase.from('daily_logs').upsert(
+      {
+        client_id: params.clientId,
+        date: dateStr,
+        weight: params?.weight,
+        sleep_hours: params?.sleepHours ?? params?.sleep_hours,
+        notes: params?.notes || null,
+        training_done: params?.training_done,
+      },
+      { onConflict: 'client_id,date' }
+    );
     if (error) throw new Error(error.message);
     return { success: true };
   }
@@ -483,11 +584,29 @@
   window.TrackerSupabase = {
     apiCall: supabaseApiCall,
     hasHandler: (action) => {
-      const handlers = ['parseWorkout', 'getClients', 'getClientProfile', 'getExercises', 'getLastDailyData', 'getRecentSessions',
-        'getTrainingBlocks', 'getActiveBlock', 'getSessionDetails', 'startSession', 'addSet', 'finishSession',
-        'deleteSession', 'createTrainingBlock', 'addExercise', 'saveDailyData', 'getMandatoryTasks',
-        'logMandatoryTaskCompletion', 'updateMandatoryTasks', 'saveMandatoryTaskLog'];
+      const handlers = [
+        'parseWorkout',
+        'getClients',
+        'getClientProfile',
+        'getExercises',
+        'getLastDailyData',
+        'getRecentSessions',
+        'getTrainingBlocks',
+        'getActiveBlock',
+        'getSessionDetails',
+        'startSession',
+        'addSet',
+        'finishSession',
+        'deleteSession',
+        'createTrainingBlock',
+        'addExercise',
+        'saveDailyData',
+        'getMandatoryTasks',
+        'logMandatoryTaskCompletion',
+        'updateMandatoryTasks',
+        'saveMandatoryTaskLog',
+      ];
       return handlers.includes(action);
-    }
+    },
   };
 })();

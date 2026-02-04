@@ -1,0 +1,7 @@
+node_modules/
+deploy/mark/
+gas/
+supabase/functions/
+*.min.js
+archive/
+package-lock.json

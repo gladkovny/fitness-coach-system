@@ -33,6 +33,9 @@ Deno.serve(async (req) => {
       return json({ success: false, error: 'GEMINI_API_KEY не настроен' }, 500);
     }
 
+    // Нормализация опечаток: "2 прохода" → "2 подхода"
+    const normalizedText = text.replace(/(\d+)\s*проход(?:а|ов)?/gi, '$1 подхода');
+
     const prompt = `Распарси текст тренировки в JSON.
 
 ЗАПРЕЩЕНО переименовывать:
@@ -47,15 +50,15 @@ Deno.serve(async (req) => {
 - "Отведение гантели назад (в наклоне)" = kickback → Руки (трицепс)
 
 ФОРМАТЫ ПОДХОДОВ:
-- "60×12, 70×10" = 2 подхода: 60×12, 70×10
-- "12,5 кг на 10 раз 3 подхода" или "12,5 кг на 10 раз, 3 подхода" = 3 одинаковых: 12.5×10, 12.5×10, 12.5×10
+- "60×12, 70×10" или "40*12, 2 подхода" = 2 одинаковых: 40×12, 40×12
+- "12,5 кг на 10 раз 3 подхода" или "27 кг на 15 раз, 2 подхода" = N одинаковых
 - "10 кг, 8 и 6 раз" = 2 подхода: 10×8, 10×6
 
 Верни ТОЛЬКО валидный JSON (без markdown, без \`\`\`):
 {"exercises":[{"name":"Название","category":"Грудь|Спина|Ноги|Плечи|Руки|Кор|Другое","equipment":"","position":"","sets":[{"weight":число,"reps":число}],"unilateral":false}],"rpe":null,"duration":null}
 
 Текст:
-${text.trim()}`;
+${normalizedText.trim()}`;
 
     const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
@@ -87,7 +90,7 @@ ${text.trim()}`;
     }
 
     const parsed: ParseResult = JSON.parse(match[0]);
-    const inputLower = text.trim().toLowerCase();
+    const inputLower = normalizedText.trim().toLowerCase();
 
     if (parsed.exercises) {
       parsed.exercises = parsed.exercises.map((ex: Exercise) => {
@@ -113,8 +116,8 @@ ${text.trim()}`;
         };
       });
 
-      // Расширение подходов: "12,5 кг на 10 раз 3 подхода" → 3 одинаковых подхода
-      const lateralMatch = inputLower.match(/отведение плеча[^]*?(\d+(?:[.,]\d+)?)\s*кг\s+на\s+(\d+)\s+раз\s+(\d+)\s+подход(?:а|ов)?/i);
+      // Расширение подходов: "27 кг на 15 раз, 2 подхода" или "12,5 кг на 10 раз 3 подхода"
+      const lateralMatch = inputLower.match(/отведение плеча[^]*?(\d+(?:[.,]\d+)?)\s*кг\s+на\s+(\d+)\s+раз[^]*?(\d+)\s+подход(?:а|ов)?/i);
       if (lateralMatch) {
         const [, weightStr, repsStr, nStr] = lateralMatch;
         const n = parseInt(nStr, 10);

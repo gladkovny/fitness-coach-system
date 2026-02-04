@@ -1,1 +1,1 @@
-[chore] Реорганизация: CURRENT_STATE.md, Master_API.gs, Onboarding.gs
+Обновил .cursorrules: протокол решения проблем, отладка, распознавание

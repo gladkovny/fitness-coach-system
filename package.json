@@ -4,7 +4,11 @@
   "description": "Коробочная SaaS-система для фитнес-тренеров",
   "scripts": {
     "sync": "node scripts/sync-claude.js",
-    "sync:watch": "node scripts/sync-claude.js && echo 'Watching...' && timeout /t 60 > nul && npm run sync:watch"
+    "sync:watch": "node scripts/sync-claude.js && echo 'Watching...' && timeout /t 60 > nul && npm run sync:watch",
+    "lint": "eslint \"deploy/master/js/**/*.js\" \"src/js/**/*.js\" \"scripts/**/*.js\"",
+    "format": "prettier --write \"deploy/master/js/**/*.js\" \"src/js/**/*.js\" \"scripts/**/*.js\"",
+    "test": "node tests/recognition.test.js",
+    "prepare": "husky"
   },
   "keywords": [
     "fitness",
@@ -13,7 +17,21 @@
   ],
   "author": "Николай",
   "license": "UNLICENSED",
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.html": [
+      "prettier --write"
+    ]
+  },
   "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.3.3",
     "supabase": "^2.74.5"
   }
 }

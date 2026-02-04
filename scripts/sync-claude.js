@@ -20,13 +20,13 @@ function readFile(filePath) {
 // Получаем структуру папок
 function getTree(dir, prefix = '', depth = 2) {
   if (depth < 0) return '';
-  
+
   const items = fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true });
   const ignore = ['node_modules', '.git', 'archive', 'Марк'];
-  
+
   return items
-    .filter(item => !ignore.includes(item.name) && !item.name.startsWith('.'))
-    .map(item => {
+    .filter((item) => !ignore.includes(item.name) && !item.name.startsWith('.'))
+    .map((item) => {
       const line = `${prefix}├── ${item.name}${item.isDirectory() ? '/' : ''}`;
       if (item.isDirectory() && depth > 0) {
         return line + '\n' + getTree(path.join(dir, item.name), prefix + '│   ', depth - 1);
@@ -39,17 +39,14 @@ function getTree(dir, prefix = '', depth = 2) {
 // Извлекаем TODO из кода
 function extractTodos() {
   const todos = [];
-  const files = [
-    'docs/CURRENT_STATE_v5.md',
-    '.cursorrules'
-  ];
-  
-  files.forEach(file => {
+  const files = ['docs/CURRENT_STATE_v5.md', '.cursorrules'];
+
+  files.forEach((file) => {
     const content = readFile(file);
     const matches = content.match(/- \[ \].+/g) || [];
     todos.push(...matches);
   });
-  
+
   return todos.slice(0, 10).join('\n');
 }
 
@@ -112,6 +109,3 @@ ${extractTodos() || '- Нет открытых задач'}
 fs.writeFileSync(path.join(ROOT, 'CLAUDE.md'), output);
 console.log('✅ CLAUDE.md обновлён');
 console.log(`📄 ${output.length} символов`);
-`;
-fs.writeFileSync(path.join(ROOT, 'CLAUDE.md'), output);
-console.log('✅ CLAUDE.md обновлён');

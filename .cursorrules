@@ -15,8 +15,14 @@
 
 **Два контура:** Master (Supabase) — deploy/master: login, dashboard, tracker. Mark (GAS) — deploy/mark: dashboard, program. Идёт переход на Supabase (Фаза 2).
 
+## Pre-commit и тесты
+- **Husky + lint-staged:** при `git commit` запускаются `npx lint-staged` (ESLint --fix и Prettier для staged *.js; Prettier для *.html) и `npm test`.
+- **Тесты распознавания:** `tests/recognition.test.js` — кейсы ввод → id упражнения (без фреймворка, Node assert). Запуск: `npm test`. Логика в `tests/recognition.js` (normalizeText, recognizeExercise, фикстура упражнений).
+- При изменении логики распознавания — обновить тесты и фикстуру в `tests/recognition.js` при необходимости.
+
 ## Структура проекта
 ```
+tests/              — Тесты (recognition.test.js, recognition.js)
 src/                — Frontend (HTML/CSS/JS)
 ├── dashboard/        — Дашборд офлайн клиентов
 ├── tracker/          — Трекер тренера + Assessment

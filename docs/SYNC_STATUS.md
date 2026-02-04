@@ -54,6 +54,7 @@
 | Master: дашборд | ✅ | deploy/master/dashboard — после входа список клиентов из Supabase, выбор клиента → данные (блок, тренировки, неделя) из Supabase |
 | Марк в списке клиентов | ✅ | Скрипт ensure_mark_dashboard.sql выполнен — Марк в clients с программой и блоком |
 | Документация первого запуска | ✅ | supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md, supabase/TESTING_FIRST_TIME.md, DATA_RESTORE_AND_MARK.md |
+| Pre-commit и тесты | ✅ | Husky + lint-staged (ESLint, Prettier для staged файлов), npm test в .husky/pre-commit; tests/recognition.test.js — тесты распознавания упражнений |
 
 ---
 
