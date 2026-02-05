@@ -58,10 +58,11 @@ const output = `# FITNESS COACH SYSTEM — Claude Context
 
 ## Проект
 Коробочная SaaS-система для фитнес-тренеров.
-- **Backend**: Google Apps Script (GAS)
-- **Frontend**: Vanilla HTML/CSS/JS
-- **Database**: Google Sheets
+- **Backend**: Supabase (auth, БД для master) + GAS (часть потоков, Марк)
+- **Frontend**: Vanilla HTML/CSS/JS (deploy/master, deploy/mark)
+- **Database**: Supabase (основные данные) + Google Sheets (исторические до полного перехода)
 - **Hosting**: Netlify
+- **Этап**: Миграция на Supabase. Трекер и дашборд master на Supabase.
 
 ## Структура проекта
 \`\`\`
@@ -100,6 +101,11 @@ POST action=saveAssessment
 
 ## Текущие задачи
 ${extractTodos() || '- Нет открытых задач'}
+
+## Важные документы
+- **Текущий статус:** docs/SYNC_STATUS.md
+- **Правила для AI:** docs/CLAUDE_RULES_V2.1.md, docs/cursorrules_v2.1.md
+- **Задачи на будущее:** docs/ROADMAP_NEXT_STEPS.md (раздел «Задачи на будущее»)
 
 ---
 *Скопируй это в начало диалога с Claude.ai*

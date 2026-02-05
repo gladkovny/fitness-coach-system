@@ -67,6 +67,7 @@ const FORM_FIELD_MAPPING = {
   'days_per_week': ['сколько раз в неделю', 'раз в неделю'],
   'preferred_time': ['предпочтительное время', 'время тренировок'],
   'training_location': ['где будете заниматься', 'силовыми упражнениями', 'тренироваться'],
+  'client_format': ['формат взаимодействия', 'формат работы', 'формат тренировок'],
   
   // Тренировочные цели
   'training_goals': ['над чем хотели бы', 'работать дополнительно', 'training goals'],
@@ -118,6 +119,11 @@ const VALUE_TRANSFORMS = {
   'турники/брусья': 'outdoor',
   'тренажёрный зал': 'gym',
   'комбинированный вариант': 'mixed',
+  
+  // Формат взаимодействия
+  'онлайн (самостоятельно по программе)': 'online',
+  'офлайн (личные тренировки)': 'offline',
+  'гибрид (онлайн + личные встречи)': 'hybrid',
   
   // Время
   'утро (6:00-12:00)': 'morning',
@@ -215,8 +221,8 @@ function parseFormData(headers, values) {
     clientData.main_goal_custom = clientData.main_goal_other;
   }
   
-  // Определяем тип клиента
-  clientData.client_type = determineClientType(clientData.training_location);
+  // Определяем тип клиента (приоритет: явный выбор формата)
+  clientData.client_type = determineClientType(clientData.training_location, clientData.client_format);
   
   // Генерируем ID и дату старта
   clientData.client_id = generateClientId(clientData.client_name || 'client');
@@ -281,8 +287,17 @@ function transformValue(value, fieldKey) {
 
 /**
  * Определение типа клиента
+ * Приоритет: явный выбор формата > автоопределение по месту тренировок
  */
-function determineClientType(location) {
+function determineClientType(location, clientFormat) {
+  // Если клиент явно выбрал формат — используем его
+  if (clientFormat) {
+    if (clientFormat === 'online') return 'online';
+    if (clientFormat === 'offline') return 'offline';
+    if (clientFormat === 'hybrid') return 'hybrid';
+  }
+  
+  // Иначе определяем по месту тренировок (старая логика)
   if (!location) return 'offline';
   if (location === 'gym') return 'offline';
   if (location === 'home' || location === 'outdoor') return 'online';
@@ -325,12 +340,16 @@ function createClientFromFormData(clientData) {
   // 8. Добавляем в Coach Master
   addClientToMaster(clientData, clientSS.getId());
   
+  // 9. Синхронизируем с Supabase (если настроен)
+  const supabaseResult = syncClientToSupabase(clientData, clientSS.getId());
+  
   return {
     success: true,
     clientId: clientData.client_id,
     clientName: clientData.client_name,
     spreadsheetId: clientSS.getId(),
-    spreadsheetUrl: clientSS.getUrl()
+    spreadsheetUrl: clientSS.getUrl(),
+    supabaseId: supabaseResult ? supabaseResult.id : null
   };
 }
 
@@ -1035,6 +1054,16 @@ function createOnboardingFormV2() {
     ])
     .setRequired(true);
   
+  form.addMultipleChoiceItem()
+    .setTitle('Формат взаимодействия')
+    .setHelpText('Онлайн — получаете программу и занимаетесь самостоятельно. Офлайн — личные тренировки. Гибрид — комбинация.')
+    .setChoiceValues([
+      'Онлайн (самостоятельно по программе)',
+      'Офлайн (личные тренировки)',
+      'Гибрид (онлайн + личные встречи)'
+    ])
+    .setRequired(true);
+  
   // === ТРЕНИРОВОЧНЫЕ ЦЕЛИ ===
   form.addSectionHeaderItem().setTitle('🎯 Тренировочные цели');
   
@@ -1138,5 +1167,351 @@ function testOnboardingV2() {
     Logger.log('❌ Ошибка: ' + e.message);
     Logger.log(e.stack);
     throw e;
+  }
+}
+
+
+// ================================================================
+// ЧАСТЬ 9: СИНХРОНИЗАЦИЯ С SUPABASE
+// ================================================================
+
+/**
+ * Синхронизация клиента с Supabase
+ * Вызывается автоматически при создании клиента из формы
+ * 
+ * @param {Object} clientData - Данные клиента из формы
+ * @param {string} spreadsheetId - ID таблицы клиента в Google Sheets
+ * @returns {Object|null} - Результат из Supabase или null если не настроен
+ */
+function syncClientToSupabase(clientData, spreadsheetId) {
+  try {
+    // Получаем конфигурацию Supabase
+    const config = getSupabaseConfigSafe();
+    if (!config) {
+      Logger.log('SUPABASE: Не настроен (пропускаем синхронизацию)');
+      return null;
+    }
+    
+    // Получаем или создаём тренера
+    const trainerId = getOrCreateTrainer(config);
+    
+    // Формируем профиль клиента (JSONB для Supabase)
+    const profile = {
+      birth_date: clientData.birth_date || null,
+      age: clientData.age || null,
+      gender: clientData.gender || 'male',
+      height: clientData.height || null,
+      weight: clientData.start_weight || null,
+      phone: clientData.phone || null,
+      telegram: clientData.telegram || null,
+      training_location: clientData.training_location || null,
+      training_experience: clientData.training_experience || null,
+      activity_level: clientData.activity_level || 'moderate',
+      days_per_week: clientData.days_per_week || null,
+      preferred_time: clientData.preferred_time || null,
+      main_goal: clientData.main_goal || null,
+      main_goal_custom: clientData.main_goal_custom || null,
+      target_weight: clientData.target_weight || null,
+      goal_timeframe: clientData.goal_timeframe || null,
+      goal_description: clientData.goal_description || null,
+      training_goals: clientData.training_goals || [],
+      health: {
+        heart: clientData.health_heart || false,
+        injuries: clientData.health_injuries_desc || null,
+        chronic: clientData.health_chronic_desc || null,
+        medications: clientData.health_medications_desc || null,
+        restrictions: clientData.health_restrictions || null
+      },
+      additional_notes: clientData.additional_notes || null,
+      referral_source: clientData.referral_source || null,
+      client_type: clientData.client_type || 'offline',
+      client_format: clientData.client_format || null,
+      google_sheets_id: spreadsheetId,
+      gas_client_id: clientData.client_id || null,
+      onboarded_at: new Date().toISOString(),
+      form_submitted: clientData.form_submitted || null
+    };
+    
+    // Создаём клиента в Supabase
+    const result = supabasePostSafe(config, 'clients', {
+      trainer_id: trainerId,
+      email: null,
+      name: clientData.client_name || 'Новый клиент',
+      status: 'onboarding',
+      profile: profile
+    });
+    
+    Logger.log('SUPABASE: ✅ Клиент синхронизирован: ' + result.id);
+    return result;
+    
+  } catch (error) {
+    Logger.log('SUPABASE ERROR: ' + error.message);
+    // Не прерываем основной процесс — форма всё равно обработается
+    return null;
+  }
+}
+
+/**
+ * Безопасное получение конфигурации Supabase из свойств скрипта
+ */
+function getSupabaseConfigSafe() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const url = props.getProperty('SUPABASE_URL');
+    const key = props.getProperty('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!url || !key) {
+      return null;
+    }
+    
+    // Нормализация URL
+    let normalizedUrl = String(url).trim().replace(/\/$/, '');
+    if (!normalizedUrl.startsWith('https://') && !normalizedUrl.startsWith('http://')) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+    
+    return { url: normalizedUrl, key: key };
+  } catch (e) {
+    Logger.log('getSupabaseConfigSafe error: ' + e.message);
+    return null;
+  }
+}
+
+/**
+ * POST запрос к Supabase REST API
+ */
+function supabasePostSafe(config, table, payload) {
+  const res = UrlFetchApp.fetch(config.url + '/rest/v1/' + table, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'apikey': config.key,
+      'Authorization': 'Bearer ' + config.key,
+      'Prefer': 'return=representation'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  
+  if (res.getResponseCode() >= 400) {
+    throw new Error(table + ' POST error: ' + res.getContentText());
+  }
+  
+  const json = JSON.parse(res.getContentText());
+  return Array.isArray(json) ? json[0] : json;
+}
+
+/**
+ * GET запрос к Supabase REST API
+ */
+function supabaseGet(config, table, query) {
+  const res = UrlFetchApp.fetch(config.url + '/rest/v1/' + table + '?' + query, {
+    method: 'get',
+    headers: {
+      'apikey': config.key,
+      'Authorization': 'Bearer ' + config.key
+    },
+    muteHttpExceptions: true
+  });
+  
+  if (res.getResponseCode() >= 400) {
+    throw new Error(table + ' GET error: ' + res.getContentText());
+  }
+  
+  return JSON.parse(res.getContentText());
+}
+
+/**
+ * Получение или создание тренера в Supabase
+ */
+function getOrCreateTrainer(config) {
+  // Проверяем кэш
+  const cached = CacheService.getScriptCache().get('supabase_trainer_id');
+  if (cached) return cached;
+  
+  // Ищем существующего тренера по email
+  const trainers = supabaseGet(config, 'trainers', 
+    'email=eq.' + encodeURIComponent(CONFIG.TRAINER_EMAIL) + '&select=id'
+  );
+  
+  if (trainers && trainers.length > 0) {
+    CacheService.getScriptCache().put('supabase_trainer_id', trainers[0].id, 3600);
+    return trainers[0].id;
+  }
+  
+  // Создаём нового тренера
+  const newTrainer = supabasePostSafe(config, 'trainers', {
+    email: CONFIG.TRAINER_EMAIL,
+    name: 'Николай',
+    subscription_plan: 'free'
+  });
+  
+  CacheService.getScriptCache().put('supabase_trainer_id', newTrainer.id, 3600);
+  Logger.log('SUPABASE: Создан тренер: ' + newTrainer.id);
+  return newTrainer.id;
+}
+
+/**
+ * Ручная синхронизация существующего клиента с Supabase
+ * Использовать если клиент был создан до интеграции (например, Саша)
+ * 
+ * Как использовать:
+ * 1. Открыть редактор GAS
+ * 2. Запустить функцию syncExistingClientToSupabase('имя_клиента')
+ * 
+ * @param {string} clientName - Имя клиента для поиска в Coach Master
+ */
+function syncExistingClientToSupabase(clientName) {
+  const config = getSupabaseConfigSafe();
+  if (!config) {
+    Logger.log('❌ Supabase не настроен! Добавь SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY в свойства скрипта.');
+    return null;
+  }
+  
+  // Открываем Coach Master
+  const masterSS = SpreadsheetApp.openById(CONFIG.COACH_MASTER_ID);
+  const clientsSheet = masterSS.getSheetByName('Clients');
+  if (!clientsSheet) {
+    Logger.log('❌ Лист Clients не найден в Coach Master');
+    return null;
+  }
+  
+  // Ищем клиента по имени
+  const data = clientsSheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).toLowerCase().trim());
+  const nameCol = headers.indexOf('name');
+  const idCol = headers.indexOf('id');
+  const spreadsheetIdCol = headers.indexOf('spreadsheetid');
+  
+  let clientRow = null;
+  for (let i = 1; i < data.length; i++) {
+    const name = String(data[i][nameCol] || '').trim();
+    if (name.toLowerCase().includes(clientName.toLowerCase())) {
+      clientRow = data[i];
+      Logger.log('Найден клиент: ' + name);
+      break;
+    }
+  }
+  
+  if (!clientRow) {
+    Logger.log('❌ Клиент "' + clientName + '" не найден в Coach Master');
+    return null;
+  }
+  
+  const clientId = clientRow[idCol];
+  const spreadsheetId = clientRow[spreadsheetIdCol];
+  
+  if (!spreadsheetId) {
+    Logger.log('❌ У клиента нет spreadsheetId');
+    return null;
+  }
+  
+  // Открываем таблицу клиента и читаем данные
+  try {
+    const clientSS = SpreadsheetApp.openById(spreadsheetId);
+    const clientData = readClientDataFromSpreadsheet(clientSS, clientId);
+    
+    // Синхронизируем с Supabase
+    const result = syncClientToSupabase(clientData, spreadsheetId);
+    
+    if (result) {
+      Logger.log('✅ Клиент "' + clientData.client_name + '" синхронизирован!');
+      Logger.log('   Supabase ID: ' + result.id);
+    }
+    
+    return result;
+  } catch (e) {
+    Logger.log('❌ Ошибка открытия таблицы клиента: ' + e.message);
+    return null;
+  }
+}
+
+/**
+ * Чтение данных клиента из его таблицы (для ручной синхронизации)
+ */
+function readClientDataFromSpreadsheet(ss, clientId) {
+  const clientData = { client_id: clientId };
+  
+  // Читаем ClientProfile
+  const profileSheet = ss.getSheetByName('ClientProfile');
+  if (profileSheet) {
+    const profileData = profileSheet.getDataRange().getValues();
+    for (let i = 1; i < profileData.length; i++) {
+      const key = String(profileData[i][0] || '').trim();
+      const value = profileData[i][1];
+      if (key && value !== '' && value !== null) {
+        clientData[key] = value;
+      }
+    }
+    // Маппинг полей
+    clientData.client_name = clientData.name || clientData.client_name;
+    clientData.start_weight = clientData.weight || clientData.start_weight;
+  }
+  
+  // Читаем Goals
+  const goalsSheet = ss.getSheetByName('Goals');
+  if (goalsSheet) {
+    const goalsData = goalsSheet.getDataRange().getValues();
+    for (let i = 1; i < goalsData.length; i++) {
+      const key = String(goalsData[i][0] || '').trim();
+      const value = goalsData[i][1];
+      if (key && value !== '' && value !== null && !clientData[key]) {
+        clientData[key] = value;
+      }
+    }
+  }
+  
+  // Читаем Form (сырые данные)
+  const formSheet = ss.getSheetByName('Form');
+  if (formSheet) {
+    const formData = formSheet.getDataRange().getValues();
+    for (let i = 1; i < formData.length; i++) {
+      const key = String(formData[i][0] || '').trim();
+      const value = formData[i][1];
+      if (key && value !== '' && value !== null && !clientData[key]) {
+        clientData[key] = value;
+      }
+    }
+  }
+  
+  // Определяем тип клиента если не указан
+  if (!clientData.client_type) {
+    clientData.client_type = determineClientType(clientData.training_location);
+  }
+  
+  return clientData;
+}
+
+/**
+ * Тест Supabase подключения
+ */
+function testSupabaseConnection() {
+  const config = getSupabaseConfigSafe();
+  
+  if (!config) {
+    Logger.log('❌ Supabase НЕ НАСТРОЕН!');
+    Logger.log('');
+    Logger.log('Инструкция:');
+    Logger.log('1. Файл → Настройки проекта → Свойства скрипта');
+    Logger.log('2. Добавь свойства:');
+    Logger.log('   SUPABASE_URL = https://aobnfwvjmnbwdytagqyl.supabase.co');
+    Logger.log('   SUPABASE_SERVICE_ROLE_KEY = eyJhbG...(твой ключ)');
+    return false;
+  }
+  
+  Logger.log('✅ Supabase настроен: ' + config.url);
+  
+  try {
+    const trainerId = getOrCreateTrainer(config);
+    Logger.log('✅ Тренер найден/создан: ' + trainerId);
+    
+    // Проверяем клиентов
+    const clients = supabaseGet(config, 'clients', 'select=id,name&limit=5');
+    Logger.log('✅ Клиентов в базе: ' + clients.length);
+    
+    return true;
+  } catch (e) {
+    Logger.log('❌ Ошибка подключения: ' + e.message);
+    return false;
   }
 }
