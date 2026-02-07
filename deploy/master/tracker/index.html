@@ -6253,6 +6253,11 @@
 
       async function saveWorkout() {
         if (!workoutState.parsedWorkout || !currentClient) return;
+        if (window._saveWorkoutInProgress) {
+          if (typeof showToast === 'function') showToast('Сохранение уже идёт, подождите…', 'info');
+          return;
+        }
+        window._saveWorkoutInProgress = true;
 
         // Получаем название, RPE и комментарий
         const workoutName = document.getElementById('workoutNameInput')?.value.trim() || '';
@@ -6430,6 +6435,8 @@
         } catch (error) {
           hideLoading();
           showToast('Ошибка: ' + error.message, 'error');
+        } finally {
+          window._saveWorkoutInProgress = false;
         }
       }
 

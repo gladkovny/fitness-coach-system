@@ -1,324 +1,792 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Прогресс тренировок</title>
-  
-  <!-- Общие стили -->
-  <link rel="stylesheet" href="../css/common.css">
-  
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-  <!-- Специфичные стили для дашборда -->
-  <style>
-    /* Прогресс блока */
-    .block-stats { display: flex; align-items: center; gap: 20px; }
-    
-    .block-circle { width: 80px; height: 80px; position: relative; }
-    .block-circle svg { transform: rotate(-90deg); width: 80px; height: 80px; }
-    .block-circle-bg { fill: none; stroke: var(--bg); stroke-width: 6; }
-    .block-circle-fill { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 0.5s ease; }
-    .block-number { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: 700; }
-    
-    .block-info { flex: 1; }
-    .block-label { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .block-sublabel { font-size: 13px; color: var(--text-secondary); }
-    
-    /* Цели */
-    .goals-list { display: flex; flex-wrap: wrap; gap: 8px; }
-    .goal-tag { background: var(--accent-light); color: var(--accent); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
-    
-    /* Мышечные группы */
-    .muscle-groups { display: flex; flex-direction: column; gap: 12px; }
-    .muscle-group { background: var(--bg); border-radius: 12px; overflow: hidden; }
-    .muscle-group-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; cursor: pointer; transition: background 0.2s; }
-    .muscle-group-header:hover { background: rgba(0,0,0,0.02); }
-    .muscle-group-name { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
-    .muscle-group-icon { font-size: 20px; }
-    .muscle-group-stats { display: flex; align-items: center; gap: 12px; }
-    .muscle-group-sets { font-size: 14px; color: var(--text-secondary); }
-    .muscle-group-bar { width: 60px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-    .muscle-group-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
-    .muscle-group-arrow { color: var(--text-secondary); transition: transform 0.2s; }
-    .muscle-group.expanded .muscle-group-arrow { transform: rotate(180deg); }
-    .muscle-details { display: none; padding: 0 16px 14px; }
-    .muscle-group.expanded .muscle-details { display: block; }
-    .muscle-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
-    .muscle-name { font-size: 14px; color: var(--text-secondary); }
-    .muscle-value { font-size: 14px; font-weight: 500; }
-    
-    /* Сравнение недель */
-    .weeks-comparison { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .week-card { background: var(--bg); border-radius: 12px; padding: 14px; text-align: center; }
-    .week-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-    .week-value { font-size: 24px; font-weight: 700; }
-    .week-subvalue { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-    .week-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-top: 8px; }
-    .week-change.up { background: #d4edda; color: #155724; }
-    .week-change.down { background: #f8d7da; color: #721c24; }
-    .week-change.same { background: var(--border); color: var(--text-secondary); }
-    
-    /* Прогресс */
-    .progress-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
-    .progress-item:last-child { border-bottom: none; }
-    .progress-info { flex: 1; }
-    .progress-name { font-weight: 600; font-size: 15px; }
-    .progress-date { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-    .progress-values { text-align: right; }
-    .progress-weight { font-size: 18px; font-weight: 700; color: var(--accent); }
-    .progress-change { font-size: 12px; color: var(--success); font-weight: 500; }
-    
-    /* Тренировки */
-    .session-item { padding: 14px; background: var(--bg); border-radius: 12px; margin-bottom: 10px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-    .session-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .session-item:last-child { margin-bottom: 0; }
-    .session-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .session-date { font-weight: 600; font-size: 15px; }
-    .session-type { font-size: 13px; color: var(--accent); font-weight: 500; }
-    .session-stats { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); }
-    .session-stat { display: flex; align-items: center; gap: 4px; }
-    
-    /* Рекорды */
-    .record-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg); border-radius: 12px; margin-bottom: 10px; }
-    .record-type { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-    .record-name { font-weight: 600; font-size: 15px; margin-top: 2px; }
-    .record-value-container { text-align: right; }
-    .record-value { font-size: 20px; font-weight: 700; color: var(--accent); }
-    .record-date { font-size: 12px; color: var(--text-secondary); }
-    
-    /* Модальное окно тренировки */
-    .modal-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .modal-stat { background: var(--bg); border-radius: 12px; padding: 12px; text-align: center; }
-    .modal-stat-value { font-size: 20px; font-weight: 700; }
-    .modal-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
-    .modal-exercise-list { list-style: none; }
-    .modal-exercise { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
-    .modal-exercise:last-child { border-bottom: none; }
-    .modal-exercise-name { font-size: 14px; flex: 1; }
-    .modal-exercise-detail { font-size: 14px; color: var(--text-secondary); text-align: right; }
-    
-    /* График */
-    .chart-container { height: 220px; position: relative; }
-    
-    /* Страницы */
-    .history-page, .records-page { display: none; }
-    .history-page.active, .records-page.active { display: block; }
-    .main-page { display: block; }
-    .main-page.hidden { display: none; }
-    
-    /* Выбор клиента */
-    .client-picker-wrap { min-height: 100vh; padding: 24px; display: flex; flex-direction: column; align-items: center; }
-    .client-picker-wrap h2 { margin-bottom: 8px; }
-    .client-picker-desc { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
-    .client-picker-list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-    .client-picker-item { background: var(--card); padding: 16px; border-radius: var(--radius-md); cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); transition: transform 0.2s; }
-    .client-picker-item:hover { transform: translateY(-2px); }
-    .client-picker-name { font-weight: 600; }
-    .client-picker-status { font-size: 12px; color: var(--text-secondary); }
-    .header-client-select { font-size: 13px; color: var(--text-secondary); margin-top: 4px; cursor: pointer; text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div id="app">
-    <div class="loading">
-      <div class="spinner"></div>
-      <div>Загрузка...</div>
-    </div>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Прогресс тренировок</title>
 
-  <!-- Общие модули -->
-  <script src="../js/supabase-config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../js/utils.js"></script>
-  <script src="../js/api.js"></script>
-  
-  <script>
-    // ═══════════════════════════════════════════════════════════
-    // SUPABASE & AUTH
-    // ═══════════════════════════════════════════════════════════
-    
-    const supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-    let clientsList = [];
-    let programsList = [];
-    
-    async function requireAuth() {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session) {
-        window.location.href = '../login.html?redirect=' + encodeURIComponent('dashboard/index.html');
-        return false;
+    <!-- Общие стили -->
+    <link rel="stylesheet" href="../css/common.css" />
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Специфичные стили для дашборда -->
+    <style>
+      /* Прогресс блока */
+      .block-stats {
+        display: flex;
+        align-items: center;
+        gap: 20px;
       }
-      return true;
-    }
-    
-    async function handleLogout() {
-      await supabaseClient.auth.signOut();
-      window.location.href = '../login.html';
-    }
-    
-    async function loadClientsFromSupabase() {
-      const { data: list, error } = await supabaseClient
-        .from('clients')
-        .select('id, name, email, status')
-        .order('name');
-      if (error) throw error;
-      return list || [];
-    }
-    
-    async function loadProgramsFromSupabase(clientId) {
-      const { data: list, error } = await supabaseClient
-        .from('programs')
-        .select('id, name, type, status')
-        .eq('client_id', clientId)
-        .order('name');
-      if (error) throw error;
-      return list || [];
-    }
-    
-    async function loadDashboardFromSupabase(clientId) {
-      const [{ data: client, error: clientErr }, { data: allSessions, error: sessionsErr }, mandatoryResult] = await Promise.all([
-        supabaseClient.from('clients').select('id, name, profile').eq('id', clientId).single(),
-        supabaseClient.from('workout_sessions').select('id, date, type, status, notes, total_tonnage, block_id')
-          .eq('client_id', clientId).order('date', { ascending: false }).limit(1000),
-        Promise.all([
-          supabaseClient.from('mandatory_tasks').select('id, name, category').eq('client_id', clientId).eq('active', true).order('sort_order'),
-          supabaseClient.from('mandatory_task_log').select('task_id').eq('client_id', clientId)
-        ]).then(([a, b]) => ({ tasks: a.data || [], logs: b.data || [] })).catch(() => ({ tasks: [], logs: [] }))
-      ]);
-      const mandatoryTasks = mandatoryResult.tasks;
-      const mandatoryLogs = mandatoryResult.logs;
-      if (clientErr || !client) throw clientErr || new Error('Клиент не найден');
-      
-      const profile = client.profile || {};
-      const goals = {
-        clientName: client.name,
-        startDate: profile.startDate || profile.start_date || '',
-        mainGoals: profile.mainGoals || profile.main_goals || ''
-      };
-      
-      let blocks = [];
-      const { data: programs } = await supabaseClient.from('programs').select('id').eq('client_id', clientId);
-      if (programs?.length) {
-        const { data: blocksData } = await supabaseClient.from('training_blocks')
-          .select('id, name, total_sessions, used_sessions, start_date, status')
-          .in('program_id', programs.map(p => p.id))
-          .order('start_date', { ascending: false });
-        blocks = blocksData || [];
+
+      .block-circle {
+        width: 80px;
+        height: 80px;
+        position: relative;
       }
-      
-      const activeBlock = blocks.find(b => b.status === 'active') || blocks[0];
-      const currentBlock = activeBlock ? {
-        blockId: 1,
-        blockNumber: 1,
-        totalSessions: activeBlock.total_sessions || 0,
-        usedSessions: activeBlock.used_sessions || 0,
-        remaining: Math.max(0, (activeBlock.total_sessions || 0) - (activeBlock.used_sessions || 0)),
-        progress: activeBlock.total_sessions ? Math.round(((activeBlock.used_sessions || 0) / activeBlock.total_sessions) * 100) : 0,
-        status: activeBlock.status || 'active'
-      } : { status: 'none' };
-      
-      const now = new Date();
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 90);
-      const cutoffStr = cutoffDate.toISOString().slice(0, 10);
-      const sessions = (allSessions || []).filter(s => {
-        if (currentPeriod === 'block') {
-          if (!activeBlock?.id) return false;
-          return s.block_id === activeBlock.id;
+      .block-circle svg {
+        transform: rotate(-90deg);
+        width: 80px;
+        height: 80px;
+      }
+      .block-circle-bg {
+        fill: none;
+        stroke: var(--bg);
+        stroke-width: 6;
+      }
+      .block-circle-fill {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 6;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.5s ease;
+      }
+      .block-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .block-info {
+        flex: 1;
+      }
+      .block-label {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .block-sublabel {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      /* Цели */
+      .goals-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .goal-tag {
+        background: var(--accent-light);
+        color: var(--accent);
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      /* Мышечные группы */
+      .muscle-groups {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .muscle-group {
+        background: var(--bg);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .muscle-group-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .muscle-group-header:hover {
+        background: rgba(0, 0, 0, 0.02);
+      }
+      .muscle-group-name {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .muscle-group-icon {
+        font-size: 20px;
+      }
+      .muscle-group-stats {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .muscle-group-sets {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      .muscle-group-bar {
+        width: 60px;
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .muscle-group-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+      .muscle-group-arrow {
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+      }
+      .muscle-group.expanded .muscle-group-arrow {
+        transform: rotate(180deg);
+      }
+      .muscle-details {
+        display: none;
+        padding: 0 16px 14px;
+      }
+      .muscle-group.expanded .muscle-details {
+        display: block;
+      }
+      .muscle-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-top: 1px solid var(--border);
+      }
+      .muscle-name {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+      .muscle-value {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      /* Сравнение недель */
+      .weeks-comparison {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .week-card {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+      }
+      .week-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .week-value {
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .week-subvalue {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      .week-change {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-top: 8px;
+      }
+      .week-change.up {
+        background: #d4edda;
+        color: #155724;
+      }
+      .week-change.down {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .week-change.same {
+        background: var(--border);
+        color: var(--text-secondary);
+      }
+
+      /* Прогресс */
+      .progress-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .progress-item:last-child {
+        border-bottom: none;
+      }
+      .progress-info {
+        flex: 1;
+      }
+      .progress-name {
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .progress-date {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+      }
+      .progress-values {
+        text-align: right;
+      }
+      .progress-weight {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      .progress-change {
+        font-size: 12px;
+        color: var(--success);
+        font-weight: 500;
+      }
+
+      /* Тренировки */
+      .session-item {
+        padding: 14px;
+        background: var(--bg);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+      .session-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      .session-item:last-child {
+        margin-bottom: 0;
+      }
+      .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .session-date {
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .session-type {
+        font-size: 13px;
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .session-stats {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .session-stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* Рекорды */
+      .record-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px;
+        background: var(--bg);
+        border-radius: 12px;
+        margin-bottom: 10px;
+      }
+      .record-type {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .record-name {
+        font-weight: 600;
+        font-size: 15px;
+        margin-top: 2px;
+      }
+      .record-value-container {
+        text-align: right;
+      }
+      .record-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      .record-date {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      /* Модальное окно тренировки */
+      .modal-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .modal-stat {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+      }
+      .modal-stat-value {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .modal-stat-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+      .modal-exercise-list {
+        list-style: none;
+      }
+      .modal-exercise {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-exercise:last-child {
+        border-bottom: none;
+      }
+      .modal-exercise-name {
+        font-size: 14px;
+        flex: 1;
+      }
+      .modal-exercise-detail {
+        font-size: 14px;
+        color: var(--text-secondary);
+        text-align: right;
+      }
+
+      /* График */
+      .chart-container {
+        height: 220px;
+        position: relative;
+      }
+
+      /* Страницы */
+      .history-page,
+      .records-page {
+        display: none;
+      }
+      .history-page.active,
+      .records-page.active {
+        display: block;
+      }
+      .main-page {
+        display: block;
+      }
+      .main-page.hidden {
+        display: none;
+      }
+
+      /* Выбор клиента */
+      .client-picker-wrap {
+        min-height: 100vh;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .client-picker-wrap h2 {
+        margin-bottom: 8px;
+      }
+      .client-picker-desc {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-bottom: 24px;
+      }
+      .client-picker-list {
+        width: 100%;
+        max-width: 360px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+      .client-picker-item {
+        background: var(--card);
+        padding: 16px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: var(--shadow);
+        transition: transform 0.2s;
+      }
+      .client-picker-item:hover {
+        transform: translateY(-2px);
+      }
+      .client-picker-name {
+        font-weight: 600;
+      }
+      .client-picker-status {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .header-client-select {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="loading">
+        <div class="spinner"></div>
+        <div>Загрузка...</div>
+      </div>
+    </div>
+
+    <!-- Общие модули -->
+    <script src="../js/supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+
+    <script>
+      // ═══════════════════════════════════════════════════════════
+      // SUPABASE & AUTH
+      // ═══════════════════════════════════════════════════════════
+
+      const supabaseClient = window.supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_ANON_KEY
+      );
+      let clientsList = [];
+      let programsList = [];
+
+      async function requireAuth() {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession();
+        if (!session) {
+          window.location.href =
+            '../login.html?redirect=' + encodeURIComponent('dashboard/index.html');
+          return false;
         }
-        if (currentPeriod === '3m') return (s.date || '') >= cutoffStr;
         return true;
-      });
-      const displaySessions = (allSessions || []).slice(0, 15);
-      
-      const sessionIds = sessions.map(s => s.id);
-      const displayIds = displaySessions.map(s => s.id);
-      const allSessionIds = (allSessions || []).map(s => s.id);
-      const idsForSets = [...new Set([...sessionIds, ...displayIds, ...allSessionIds])];
-      let setsBySession = {};
-      let allSets = [];
-      if (idsForSets.length) {
-        const { data: sets } = await supabaseClient.from('workout_sets')
-          .select('session_id, reps, weight, exercise_id, exercise_name, exercises(id, name, category, equipment, muscle_coefficients)')
-          .in('session_id', idsForSets);
-        const fetchedSets = sets || [];
-        allSets = sessionIds.length ? fetchedSets.filter(st => sessionIds.includes(st.session_id)) : [];
-        const displaySets = fetchedSets.filter(st => displayIds.includes(st.session_id));
-        const volumeBySession = {};
-        fetchedSets.forEach(set => {
-          const vol = parseNum(set.weight) * parseNum(set.reps);
-          volumeBySession[set.session_id] = (volumeBySession[set.session_id] || 0) + vol;
-        });
-        displaySets.forEach(set => {
-          if (!setsBySession[set.session_id]) setsBySession[set.session_id] = {};
-          const exData = (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) || (set.exercise && typeof set.exercise === 'object' ? set.exercise : null);
-          const displayName = exData?.name || (set.exercise_name && String(set.exercise_name).trim()) || 'Упражнение';
-          // Ключ: exercise_id или exercise_name (для backfill без exercise_id — иначе все объединяются в «unknown»)
-          const key = set.exercise_id || `n:${(set.exercise_name || '').trim() || '?'}`;
-          if (!setsBySession[set.session_id][key]) {
-            setsBySession[set.session_id][key] = { name: displayName, setsList: [] };
+      }
+
+      async function handleLogout() {
+        await supabaseClient.auth.signOut();
+        window.location.href = '../login.html';
+      }
+
+      async function loadClientsFromSupabase() {
+        const { data: list, error } = await supabaseClient
+          .from('clients')
+          .select('id, name, email, status')
+          .order('name');
+        if (error) throw error;
+        return list || [];
+      }
+
+      async function loadProgramsFromSupabase(clientId) {
+        const { data: list, error } = await supabaseClient
+          .from('programs')
+          .select('id, name, type, status')
+          .eq('client_id', clientId)
+          .order('name');
+        if (error) throw error;
+        return list || [];
+      }
+
+      async function loadDashboardFromSupabase(clientId) {
+        const [
+          { data: client, error: clientErr },
+          { data: allSessions, error: sessionsErr },
+          mandatoryResult,
+        ] = await Promise.all([
+          supabaseClient.from('clients').select('id, name, profile').eq('id', clientId).single(),
+          supabaseClient
+            .from('workout_sessions')
+            .select('id, date, type, status, notes, total_tonnage, block_id')
+            .eq('client_id', clientId)
+            .order('date', { ascending: false })
+            .limit(1000),
+          Promise.all([
+            supabaseClient
+              .from('mandatory_tasks')
+              .select('id, name, category')
+              .eq('client_id', clientId)
+              .eq('active', true)
+              .order('sort_order'),
+            supabaseClient.from('mandatory_task_log').select('task_id').eq('client_id', clientId),
+          ])
+            .then(([a, b]) => ({ tasks: a.data || [], logs: b.data || [] }))
+            .catch(() => ({ tasks: [], logs: [] })),
+        ]);
+        const mandatoryTasks = mandatoryResult.tasks || [];
+        const mandatoryLogs = mandatoryResult.logs || [];
+        const mandatoryStats = {
+          tasks: mandatoryTasks.map((t) => ({
+            ...t,
+            completed: mandatoryLogs.filter((l) => l.task_id === t.id).length,
+          })),
+        };
+        if (clientErr || !client) throw clientErr || new Error('Клиент не найден');
+
+        const profile = client.profile || {};
+        const goals = {
+          clientName: client.name,
+          startDate: profile.startDate || profile.start_date || '',
+          mainGoals: profile.mainGoals || profile.main_goals || '',
+        };
+
+        let blocks = [];
+        const { data: programs } = await supabaseClient
+          .from('programs')
+          .select('id')
+          .eq('client_id', clientId);
+        if (programs?.length) {
+          const { data: blocksData } = await supabaseClient
+            .from('training_blocks')
+            .select('id, name, total_sessions, used_sessions, start_date, status')
+            .in(
+              'program_id',
+              programs.map((p) => p.id)
+            )
+            .order('start_date', { ascending: false });
+          blocks = blocksData || [];
+        }
+
+        const activeBlock = blocks.find((b) => b.status === 'active') || blocks[0];
+        // Единый источник: число выполненных = COUNT(workout_sessions) по блоку (не training_blocks.used_sessions)
+        const completedInBlock = activeBlock
+          ? (allSessions || []).filter(
+              (s) => s.block_id === activeBlock.id && (s.status || 'completed') === 'completed'
+            ).length
+          : 0;
+        const totalSessions = activeBlock?.total_sessions || 0;
+        const currentBlock = activeBlock
+          ? {
+              blockId: 1,
+              blockNumber: 1,
+              totalSessions,
+              usedSessions: completedInBlock,
+              remaining: Math.max(0, totalSessions - completedInBlock),
+              progress: totalSessions ? Math.round((completedInBlock / totalSessions) * 100) : 0,
+              status: activeBlock.status || 'active',
+            }
+          : { status: 'none' };
+
+        const now = new Date();
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 90);
+        const cutoffStr = cutoffDate.toISOString().slice(0, 10);
+        const sessions = (allSessions || []).filter((s) => {
+          if (currentPeriod === 'block') {
+            if (!activeBlock?.id) return false;
+            return s.block_id === activeBlock.id;
           }
-          setsBySession[set.session_id][key].setsList.push({ reps: parseNum(set.reps), weight: parseNum(set.weight) });
+          if (currentPeriod === '3m') return (s.date || '') >= cutoffStr;
+          return true;
         });
-        Object.keys(setsBySession).forEach(sid => {
-          setsBySession[sid] = Object.values(setsBySession[sid]).map(ex => {
-            const list = ex.setsList || [];
-            const totalSets = list.length;
-            const last = list[list.length - 1];
-            const totalVol = list.reduce((s, x) => s + (x.weight || 0) * (x.reps || 0), 0);
+        const displaySessions = (allSessions || []).slice(0, 15);
+
+        const sessionIds = sessions.map((s) => s.id);
+        const displayIds = displaySessions.map((s) => s.id);
+        const allSessionIds = (allSessions || []).map((s) => s.id);
+        const idsForSets = [...new Set([...sessionIds, ...displayIds, ...allSessionIds])];
+        let setsBySession = {};
+        let allSets = [];
+        if (idsForSets.length) {
+          const { data: sets } = await supabaseClient
+            .from('workout_sets')
+            .select(
+              'session_id, reps, weight, exercise_id, exercise_name, exercises(id, name, category, equipment, muscle_coefficients)'
+            )
+            .in('session_id', idsForSets);
+          const fetchedSets = sets || [];
+          allSets = sessionIds.length
+            ? fetchedSets.filter((st) => sessionIds.includes(st.session_id))
+            : [];
+          const displaySets = fetchedSets.filter((st) => displayIds.includes(st.session_id));
+          const volumeBySession = {};
+          fetchedSets.forEach((set) => {
+            const vol = parseNum(set.weight) * parseNum(set.reps);
+            volumeBySession[set.session_id] = (volumeBySession[set.session_id] || 0) + vol;
+          });
+          displaySets.forEach((set) => {
+            if (!setsBySession[set.session_id]) setsBySession[set.session_id] = {};
+            const exData =
+              (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) ||
+              (set.exercise && typeof set.exercise === 'object' ? set.exercise : null);
+            const displayName =
+              exData?.name ||
+              (set.exercise_name && String(set.exercise_name).trim()) ||
+              'Упражнение';
+            // Ключ: exercise_id или exercise_name (для backfill без exercise_id — иначе все объединяются в «unknown»)
+            const key = set.exercise_id || `n:${(set.exercise_name || '').trim() || '?'}`;
+            if (!setsBySession[set.session_id][key]) {
+              setsBySession[set.session_id][key] = { name: displayName, setsList: [] };
+            }
+            setsBySession[set.session_id][key].setsList.push({
+              reps: parseNum(set.reps),
+              weight: parseNum(set.weight),
+            });
+          });
+          Object.keys(setsBySession).forEach((sid) => {
+            setsBySession[sid] = Object.values(setsBySession[sid]).map((ex) => {
+              const list = ex.setsList || [];
+              const totalSets = list.length;
+              const last = list[list.length - 1];
+              const totalVol = list.reduce((s, x) => s + (x.weight || 0) * (x.reps || 0), 0);
+              return {
+                name: ex.name,
+                sets: totalSets,
+                reps: last?.reps ?? 0,
+                weight: last?.weight ?? 0,
+                setsList: list,
+                totalVolume: totalVol,
+              };
+            });
+          });
+
+          const sessionDateMap = sessions.reduce((acc, s) => {
+            acc[s.id] = s.date;
+            return acc;
+          }, {});
+          const allSessionDateMap = (allSessions || []).reduce((acc, s) => {
+            acc[s.id] = s.date;
+            return acc;
+          }, {});
+          const exById = {};
+          fetchedSets.forEach((s) => {
+            if (s.exercise_id && s.exercises && !exById[s.exercise_id])
+              exById[s.exercise_id] = s.exercises;
+          });
+          const progressSets = fetchedSets.filter((st) => allSessionIds.includes(st.session_id));
+          const muscleLoad = computeMuscleLoad(allSets, exById, sessionDateMap);
+          const exerciseProgress = computeExerciseProgress(progressSets, exById, allSessionDateMap);
+          const allRecords = computeAllRecords(progressSets, exById, allSessionDateMap);
+
+          const recentSessions = displaySessions.map((s) => {
+            const exList = setsBySession[s.id] || [];
+            const totalVolume = exList.reduce((sum, ex) => sum + (ex.totalVolume || 0), 0);
+            const totalSets = exList.reduce((sum, ex) => sum + (ex.sets || 0), 0);
             return {
-              name: ex.name,
-              sets: totalSets,
-              reps: last?.reps ?? 0,
-              weight: last?.weight ?? 0,
-              setsList: list,
-              totalVolume: totalVol
+              sessionId: s.id,
+              date: s.date,
+              type: s.type || 'Тренировка',
+              splitType: s.type || '',
+              totalVolume:
+                s.total_tonnage != null ? Number(s.total_tonnage) : Math.round(totalVolume),
+              exerciseCount: exList.length,
+              totalSets,
+              exercises: exList,
+              notes: s.notes,
             };
           });
-        });
-        
-        const sessionDateMap = sessions.reduce((acc, s) => { acc[s.id] = s.date; return acc; }, {});
-        const allSessionDateMap = (allSessions || []).reduce((acc, s) => { acc[s.id] = s.date; return acc; }, {});
-        const exById = {};
-        fetchedSets.forEach(s => { if (s.exercise_id && s.exercises && !exById[s.exercise_id]) exById[s.exercise_id] = s.exercises; });
-        const progressSets = fetchedSets.filter(st => allSessionIds.includes(st.session_id));
-        const muscleLoad = computeMuscleLoad(allSets, exById, sessionDateMap);
-        const exerciseProgress = computeExerciseProgress(progressSets, exById, allSessionDateMap);
-        const allRecords = computeAllRecords(progressSets, exById, allSessionDateMap);
-        
-        const recentSessions = displaySessions.map(s => {
-          const exList = setsBySession[s.id] || [];
-          const totalVolume = exList.reduce((sum, ex) => sum + (ex.totalVolume || 0), 0);
-          const totalSets = exList.reduce((sum, ex) => sum + (ex.sets || 0), 0);
+
+          let thisWeekCount = 0,
+            thisWeekVol = 0,
+            lastWeekCount = 0,
+            lastWeekVol = 0;
+          const dayOfWeek = now.getDay();
+          const thisWeekStart = new Date(now);
+          thisWeekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          thisWeekStart.setHours(0, 0, 0, 0);
+          const lastWeekStart = new Date(thisWeekStart);
+          lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+          const lastWeekEnd = new Date(thisWeekStart.getTime() - 1);
+          (allSessions || []).forEach((s) => {
+            const d = new Date(s.date + 'T12:00:00');
+            const vol =
+              s.total_tonnage != null ? Number(s.total_tonnage) : volumeBySession[s.id] || 0;
+            if (d >= thisWeekStart) {
+              thisWeekCount++;
+              thisWeekVol += vol;
+            } else if (d >= lastWeekStart && d <= lastWeekEnd) {
+              lastWeekCount++;
+              lastWeekVol += vol;
+            }
+          });
+
           return {
-            sessionId: s.id,
-            date: s.date,
-            type: s.type || 'Тренировка',
-            splitType: s.type || '',
-            totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : Math.round(totalVolume),
-            exerciseCount: exList.length,
-            totalSets,
-            exercises: exList,
-            notes: s.notes
+            success: true,
+            clientId,
+            period: currentPeriod,
+            generatedAt: new Date().toISOString(),
+            profile: { name: client.name },
+            goals,
+            currentBlock,
+            mandatoryStats,
+            recentSessions,
+            exerciseProgress,
+            muscleLoad,
+            allRecords,
+            weeklyComparison: {
+              thisWeek: { count: thisWeekCount, volume: thisWeekVol },
+              lastWeek: { count: lastWeekCount, volume: lastWeekVol },
+              changes: {
+                count: thisWeekCount - lastWeekCount,
+                volumePercent: (() => {
+                  if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
+                  if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
+                  return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
+                })(),
+              },
+            },
           };
-        });
-        
-        let thisWeekCount = 0, thisWeekVol = 0, lastWeekCount = 0, lastWeekVol = 0;
-        const dayOfWeek = now.getDay();
-        const thisWeekStart = new Date(now);
-        thisWeekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        thisWeekStart.setHours(0, 0, 0, 0);
-        const lastWeekStart = new Date(thisWeekStart);
-        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-        const lastWeekEnd = new Date(thisWeekStart.getTime() - 1);
-        (allSessions || []).forEach(s => {
+        }
+
+        const recentSessions = displaySessions.map((s) => ({
+          sessionId: s.id,
+          date: s.date,
+          type: s.type || 'Тренировка',
+          splitType: s.type || '',
+          totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : 0,
+          exerciseCount: 0,
+          totalSets: 0,
+          exercises: [],
+          notes: s.notes,
+        }));
+        let thisWeekCount = 0,
+          thisWeekVol = 0,
+          lastWeekCount = 0,
+          lastWeekVol = 0;
+        const dayOfWeekFallback = now.getDay();
+        const thisWeekStartFb = new Date(now);
+        thisWeekStartFb.setDate(
+          now.getDate() - (dayOfWeekFallback === 0 ? 6 : dayOfWeekFallback - 1)
+        );
+        thisWeekStartFb.setHours(0, 0, 0, 0);
+        const lastWeekStartFb = new Date(thisWeekStartFb);
+        lastWeekStartFb.setDate(lastWeekStartFb.getDate() - 7);
+        const lastWeekEndFb = new Date(thisWeekStartFb.getTime() - 1);
+        (allSessions || []).forEach((s) => {
           const d = new Date(s.date + 'T12:00:00');
-          const vol = s.total_tonnage != null ? Number(s.total_tonnage) : (volumeBySession[s.id] || 0);
-          if (d >= thisWeekStart) { thisWeekCount++; thisWeekVol += vol; }
-          else if (d >= lastWeekStart && d <= lastWeekEnd) { lastWeekCount++; lastWeekVol += vol; }
+          const vol = s.total_tonnage != null ? Number(s.total_tonnage) : 0;
+          if (d >= thisWeekStartFb) {
+            thisWeekCount++;
+            thisWeekVol += vol;
+          } else if (d >= lastWeekStartFb && d <= lastWeekEndFb) {
+            lastWeekCount++;
+            lastWeekVol += vol;
+          }
         });
-        
+
         return {
           success: true,
           clientId,
@@ -327,327 +795,522 @@
           profile: { name: client.name },
           goals,
           currentBlock,
-          mandatoryStats,
           recentSessions,
-          exerciseProgress,
-          muscleLoad,
-          allRecords,
+          exerciseProgress: { improvements: [] },
+          muscleLoad: { groups: {} },
+          allRecords: [],
+          mandatoryStats,
           weeklyComparison: {
             thisWeek: { count: thisWeekCount, volume: thisWeekVol },
             lastWeek: { count: lastWeekCount, volume: lastWeekVol },
-            changes: { count: thisWeekCount - lastWeekCount, volumePercent: (() => {
-              if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
-              if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
-              return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
-            })() }
-          }
+            changes: {
+              count: thisWeekCount - lastWeekCount,
+              volumePercent: (() => {
+                if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
+                if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
+                return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
+              })(),
+            },
+          },
         };
       }
-      
-      const recentSessions = displaySessions.map(s => ({
-        sessionId: s.id,
-        date: s.date,
-        type: s.type || 'Тренировка',
-        splitType: s.type || '',
-        totalVolume: s.total_tonnage != null ? Number(s.total_tonnage) : 0,
-        exerciseCount: 0,
-        totalSets: 0,
-        exercises: [],
-        notes: s.notes
-      }));
-      let thisWeekCount = 0, thisWeekVol = 0, lastWeekCount = 0, lastWeekVol = 0;
-      const dayOfWeekFallback = now.getDay();
-      const thisWeekStartFb = new Date(now);
-      thisWeekStartFb.setDate(now.getDate() - (dayOfWeekFallback === 0 ? 6 : dayOfWeekFallback - 1));
-      thisWeekStartFb.setHours(0, 0, 0, 0);
-      const lastWeekStartFb = new Date(thisWeekStartFb);
-      lastWeekStartFb.setDate(lastWeekStartFb.getDate() - 7);
-      const lastWeekEndFb = new Date(thisWeekStartFb.getTime() - 1);
-      (allSessions || []).forEach(s => {
-        const d = new Date(s.date + 'T12:00:00');
-        const vol = s.total_tonnage != null ? Number(s.total_tonnage) : 0;
-        if (d >= thisWeekStartFb) { thisWeekCount++; thisWeekVol += vol; }
-        else if (d >= lastWeekStartFb && d <= lastWeekEndFb) { lastWeekCount++; lastWeekVol += vol; }
-      });
-      
-      return {
-        success: true,
-        clientId,
-        period: currentPeriod,
-        generatedAt: new Date().toISOString(),
-        profile: { name: client.name },
-        goals,
-        currentBlock,
-        recentSessions,
-        exerciseProgress: { improvements: [] },
-        muscleLoad: { groups: {} },
-        allRecords: [],
-        weeklyComparison: {
-          thisWeek: { count: thisWeekCount, volume: thisWeekVol },
-          lastWeek: { count: lastWeekCount, volume: lastWeekVol },
-          changes: { count: thisWeekCount - lastWeekCount, volumePercent: (() => {
-            if (thisWeekVol === 0 && lastWeekVol > 0) return -100;
-            if (lastWeekVol === 0) return thisWeekVol > 0 ? 100 : 0;
-            return Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
-          })() }
-        }
+
+      const CATEGORY_TO_MUSCLES = {
+        грудь: { chest: 0.8, front_delt: 0.2 },
+        спина: { lats: 0.6, traps: 0.2, biceps: 0.2 },
+        ноги: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        плечи: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        руки: { biceps: 0.5, triceps: 0.5 },
+        кор: { core: 1.0 },
+        корпус: { core: 1.0 },
+        chest: { chest: 0.8, front_delt: 0.2 },
+        back: { lats: 0.6, traps: 0.2, biceps: 0.2 },
+        legs: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        shoulders: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        arms: { biceps: 0.5, triceps: 0.5 },
+        core: { core: 1.0 },
       };
-    }
-    
-    const CATEGORY_TO_MUSCLES = {
-      'грудь': { chest: 0.8, front_delt: 0.2 },
-      'спина': { lats: 0.6, traps: 0.2, biceps: 0.2 },
-      'ноги': { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
-      'плечи': { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
-      'руки': { biceps: 0.5, triceps: 0.5 },
-      'кор': { core: 1.0 },
-      'корпус': { core: 1.0 },
-      'chest': { chest: 0.8, front_delt: 0.2 },
-      'back': { lats: 0.6, traps: 0.2, biceps: 0.2 },
-      'legs': { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
-      'shoulders': { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
-      'arms': { biceps: 0.5, triceps: 0.5 },
-      'core': { core: 1.0 }
-    };
-    const NAME_KEYWORDS = [
-      { keys: ['присед', 'жим ног', 'разгибан ног', 'разгибания ног', 'сгибан ног', 'сгибания ног', 'выпад', 'гакк', 'гоблет', 'запрыг', 'прыжк', 'тумбу', 'гиперэкстензия ног', 'носки', 'squat', 'leg press', 'leg curl', 'leg extension'], val: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 } },
-      { keys: ['подтяг', 'тяга верх', 'тяга к поясу', 'тяга горизон', 'тяга штанги', 'тяга гантел', 'тяга ', 'пуловер', 'становая', 'рдл', 'румынск', 'гиперэкстензия', 'вертикальн', 'deadlift', 'lat pulldown', 'cable row'], val: { lats: 0.5, traps: 0.2, biceps: 0.2, low_back: 0.1 } },
-      { keys: ['разгибан рук', 'разгибан на блоке', 'разгибания на блоке', 'французск', 'трицепс', 'брусья', 'tricep', 'pushdown', 'руки на блоке', 'отжимания узким'], val: { triceps: 1.0 } },
-      { keys: ['жим лёжа', 'жим лежа', 'жим штанги', 'жим гантел', 'разводка', 'отжимания', 'пекдек', 'пек дек', 'bench', 'грудь', 'chest'], val: { chest: 0.8, front_delt: 0.15, triceps: 0.05 } },
-      { keys: ['жим стоя', 'жим сидя', 'жим вверх', 'жим перед', 'махи', 'арнольд', 'подбородк', 'плеч', 'shoulder', 'delt', 'выходы силой'], val: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 } },
-      { keys: ['сгибан рук', 'сгибан на бицепс', 'сгибание на бицепс', 'молот', 'бицепс', 'bicep', 'curl'], val: { biceps: 1.0 } },
-      { keys: ['планка', 'скручиван', 'подъём ног в висе', 'подъём ног (', 'пресс', 'кор', 'core'], val: { core: 1.0 } }
-    ];
-    
-    function getCoeffs(ex, fallback) {
-      const c = ex?.muscle_coefficients;
-      if (c && typeof c === 'object' && Object.keys(c).length > 0) return c;
-      const cat = (ex?.category || '').toLowerCase();
-      for (const [key, val] of Object.entries(CATEGORY_TO_MUSCLES)) {
-        if (cat.includes(key)) return val;
-      }
-      const name = (ex?.name || '').toLowerCase();
-      for (const { keys, val } of NAME_KEYWORDS) {
-        if (keys.some(k => name.includes(k))) return val;
-      }
-      return fallback || { core: 1.0 };
-    }
-    
-    function computeMuscleLoad(sets, exById, sessionDateMap) {
-      const groups = { legs: { totalSets: 0, muscles: {} }, back: { totalSets: 0, muscles: {} }, chest: { totalSets: 0, muscles: {} }, arms: { totalSets: 0, muscles: {} }, core: { totalSets: 0, muscles: {} } };
-      const muscleToGroup = { quads: 'legs', hamstrings: 'legs', glutes: 'legs', calves: 'legs', lats: 'back', traps: 'back', low_back: 'back', chest: 'chest', biceps: 'arms', triceps: 'arms', front_delt: 'arms', mid_delt: 'arms', rear_delt: 'arms', core: 'core' };
-      
-      sets.forEach(set => {
-        const ex = (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) || exById[set.exercise_id];
-        const exForCoeffs = ex || (set.exercise_name ? { name: String(set.exercise_name).trim() } : null);
-        const coeffs = getCoeffs(exForCoeffs);
-        Object.entries(coeffs).forEach(([muscle, val]) => {
-          const g = muscleToGroup[muscle];
-          if (!g) return;
-          if (!groups[g].muscles[muscle]) groups[g].muscles[muscle] = { sets: 0 };
-          groups[g].muscles[muscle].sets += val;
-          groups[g].totalSets += val;
-        });
-      });
-      return { groups };
-    }
-    
-    function parseNum(v) {
-      if (v == null || v === '') return 0;
-      const n = Number(v);
-      if (!isNaN(n)) return n;
-      const s = String(v).replace(',', '.');
-      const n2 = parseFloat(s);
-      return isNaN(n2) ? 0 : n2;
-    }
-    function normalizeExName(name) {
-      const s = String(name || '').trim();
-      const idx = s.indexOf(' (');
-      return idx > 0 ? s.slice(0, idx).trim() : s;
-    }
-    function computeExerciseProgress(sets, exById, sessionDateMap) {
-      const byEx = {};
-      sets.forEach(set => {
-        const exId = set.exercise_id;
-        const ex = exById[exId] || (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
-        const exName = ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || 'Упражнение';
-        const normName = normalizeExName(exName);
-        const key = normName || '?';
-        const date = sessionDateMap[set.session_id];
-        if (!date) return;
-        const w = parseNum(set.weight);
-        const reps = parseNum(set.reps);
-        if (!byEx[key]) byEx[key] = { name: normName || exName, points: [] };
-        byEx[key].points.push({ date, weight: w, reps });
-      });
-      const improvements = [];
-      Object.entries(byEx).forEach(([, { name, points }]) => {
-        if (points.length < 2) return;
-        points.sort((a, b) => new Date(a.date) - new Date(b.date));
-        const byDate = {};
-        points.forEach(p => {
-          const d = p.date;
-          const vol = p.weight * p.reps;
-          const score = vol > 0 ? vol : p.reps;
-          if (!byDate[d] || score > (byDate[d].weight * byDate[d].reps || byDate[d].reps)) byDate[d] = p;
-        });
-        const history = Object.entries(byDate).sort((a, b) => new Date(a[0]) - new Date(b[0])).map(([d, p]) => ({ date: d, weight: p.weight, reps: p.reps }));
-        const first = history[0];
-        const isBwEx = isBodyweightByName(name);
-        const val = (p) => (isBwEx ? p.reps : (p.weight > 0 ? p.weight : p.reps));
-        const best = history.reduce((b, p) => val(p) > val(b) ? p : b, first);
-        const firstVal = val(first);
-        const bestVal = val(best);
-        const progressVal = bestVal - firstVal;
-        if (progressVal <= 0) return;
-        const progressPercent = firstVal > 0 ? Math.round((progressVal / firstVal) * 100) : 100;
-        improvements.push({
-          name,
-          firstWeight: first.weight,
-          currentWeight: best.weight,
-          firstReps: first.reps,
-          currentReps: best.reps,
-          isBodyweight: isBwEx,
-          progressKg: !isBwEx && first.weight > 0 ? Math.round((best.weight - first.weight) * 10) / 10 : 0,
-          progressReps: isBwEx ? best.reps - first.reps : (best.reps - first.reps),
-          progressPercent,
-          lastDate: best.date,
-          history
-        });
-      });
-      improvements.sort((a, b) => b.progressPercent - a.progressPercent);
-      return { improvements: improvements.slice(0, 10), intensityHistory: {} };
-    }
-    
-    const BODYWEIGHT_KEYS = ['подтяг', 'отжим', 'брусья', 'выход'];
-    function isBodyweightByName(name) {
-      if (!name) return false;
-      const n = String(name).toLowerCase();
-      return BODYWEIGHT_KEYS.some(k => n.includes(k));
-    }
-    function computeAllRecords(sets, exById, sessionDateMap) {
-      const byEx = {};
-      sets.forEach(set => {
-        const exId = set.exercise_id;
-        const ex = exById[exId] || (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
-        const exName = ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || null;
-        const normName = normalizeExName(exName) || exName || 'Упражнение';
-        const w = parseNum(set.weight);
-        const reps = parseNum(set.reps);
-        const vol = w * reps;
-        const date = sessionDateMap[set.session_id];
-        if (!date) return;
-        const eq = ex?.equipment || '';
-        const isBw = (eq && (String(eq).toLowerCase().includes('свой вес') || String(eq).toLowerCase().includes('тело'))) || isBodyweightByName(normName);
-        const newScore = vol > 0 ? vol : (isBw ? reps : 0);
-        const cur = byEx[normName];
-        const curScore = cur ? (cur.vol > 0 ? cur.vol : (cur.isBodyweight ? cur.reps : 0)) : -1;
-        if (newScore > curScore) {
-          byEx[normName] = { vol, weight: w, reps, date, name: normName, isBodyweight: isBw };
+      const NAME_KEYWORDS = [
+        {
+          keys: [
+            'присед',
+            'жим ног',
+            'разгибан ног',
+            'разгибания ног',
+            'сгибан ног',
+            'сгибания ног',
+            'выпад',
+            'гакк',
+            'гоблет',
+            'запрыг',
+            'прыжк',
+            'тумбу',
+            'гиперэкстензия ног',
+            'носки',
+            'squat',
+            'leg press',
+            'leg curl',
+            'leg extension',
+          ],
+          val: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        },
+        {
+          keys: [
+            'подтяг',
+            'тяга верх',
+            'тяга к поясу',
+            'тяга горизон',
+            'тяга штанги',
+            'тяга гантел',
+            'тяга ',
+            'пуловер',
+            'становая',
+            'рдл',
+            'румынск',
+            'гиперэкстензия',
+            'вертикальн',
+            'deadlift',
+            'lat pulldown',
+            'cable row',
+          ],
+          val: { lats: 0.5, traps: 0.2, biceps: 0.2, low_back: 0.1 },
+        },
+        {
+          keys: [
+            'разгибан рук',
+            'разгибан на блоке',
+            'разгибания на блоке',
+            'французск',
+            'трицепс',
+            'брусья',
+            'tricep',
+            'pushdown',
+            'руки на блоке',
+            'отжимания узким',
+          ],
+          val: { triceps: 1.0 },
+        },
+        {
+          keys: [
+            'жим лёжа',
+            'жим лежа',
+            'жим штанги',
+            'жим гантел',
+            'разводка',
+            'отжимания',
+            'пекдек',
+            'пек дек',
+            'bench',
+            'грудь',
+            'chest',
+          ],
+          val: { chest: 0.8, front_delt: 0.15, triceps: 0.05 },
+        },
+        {
+          keys: [
+            'жим стоя',
+            'жим сидя',
+            'жим вверх',
+            'жим перед',
+            'махи',
+            'арнольд',
+            'подбородк',
+            'плеч',
+            'shoulder',
+            'delt',
+            'выходы силой',
+          ],
+          val: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        },
+        {
+          keys: [
+            'сгибан рук',
+            'сгибан на бицепс',
+            'сгибание на бицепс',
+            'молот',
+            'бицепс',
+            'bicep',
+            'curl',
+          ],
+          val: { biceps: 1.0 },
+        },
+        {
+          keys: [
+            'планка',
+            'скручиван',
+            'подъём ног в висе',
+            'подъём ног (',
+            'пресс',
+            'кор',
+            'core',
+          ],
+          val: { core: 1.0 },
+        },
+      ];
+
+      function getCoeffs(ex, fallback) {
+        const c = ex?.muscle_coefficients;
+        if (c && typeof c === 'object' && Object.keys(c).length > 0) return c;
+        const cat = (ex?.category || '').toLowerCase();
+        for (const [key, val] of Object.entries(CATEGORY_TO_MUSCLES)) {
+          if (cat.includes(key)) return val;
         }
-      });
-      return Object.entries(byEx)
-        .map(([, r]) => {
-          const isBw = r.isBodyweight || (r.weight === 0 && isBodyweightByName(r.name));
-          const showReps = isBw && r.reps > 0;
-          return {
-            name: r.name,
-            value: showReps ? r.reps : r.weight,
-            unit: showReps ? 'раз' : 'кг',
-            date: r.date,
-            hint: isBw && r.weight > 0 && !showReps ? ' (экв.)' : ''
-          };
-        })
-        .filter(r => {
-          if (r.unit === 'кг' && r.value === 0) return false;
-          return true;
-        });
-    }
-    
-    // ═══════════════════════════════════════════════════════════
-    // STATE
-    // ═══════════════════════════════════════════════════════════
-    
-    let data = null;
-    let currentPage = 'main';
-    let currentPeriod = 'block';
-    let tonnageChart = null;
-    let selectedClientId = null;
-    
-    // Демо-данные для локального тестирования
-    const DEMO_DATA = {
-      success: true,
-      clientId: 'demo',
-      period: 'block',
-      generatedAt: new Date().toISOString(),
-      profile: { name: 'Тестовый клиент' },
-      goals: { clientName: 'Демо Клиент', startDate: '2026-01-08', mainGoals: 'ОФП, Подтягивания 15 раз, Коррекция осанки' },
-      currentBlock: { blockId: 1, blockNumber: 1, totalSessions: 10, usedSessions: 3, remaining: 7, progress: 30, status: 'active' },
-      recentSessions: [
-        { sessionId: 'S001', date: '2026-01-24', type: 'Тренировка', splitType: 'Push', duration: 60, exerciseCount: 6, totalSets: 11, totalVolume: 1100, exercises: [
-          { name: 'Жим гантелей лёжа', sets: 3, reps: 10, weight: 12.5 },
-          { name: 'Жим ногами', sets: 2, reps: 12, weight: 30 }
-        ]},
-        { sessionId: 'S002', date: '2026-01-21', type: 'Тренировка', splitType: 'Pull', duration: 55, exerciseCount: 5, totalSets: 10, totalVolume: 950, exercises: [] },
-        { sessionId: 'S003', date: '2026-01-19', type: 'Тренировка', splitType: 'Legs', duration: 50, exerciseCount: 4, totalSets: 9, totalVolume: 1200, exercises: [] }
-      ],
-      exerciseProgress: {
-        improvements: [
-          { name: 'Жим гантелей лёжа', currentWeight: 12.5, firstWeight: 7.5, progressKg: 5, progressPercent: 67, lastDate: '2026-01-24' },
-          { name: 'Жим ногами', currentWeight: 30, firstWeight: 20, progressKg: 10, progressPercent: 50, lastDate: '2026-01-19' }
-        ]
-      },
-      muscleLoad: {
-        groups: {
-          legs: { name: 'Ноги', totalSets: 8.5, muscles: { quads: { sets: 4 }, hamstrings: { sets: 2 }, glutes: { sets: 2 }, calves: { sets: 0.5 } }},
-          back: { name: 'Спина', totalSets: 9, muscles: { lats: { sets: 6 }, traps: { sets: 2 }, low_back: { sets: 1 } }},
-          chest: { name: 'Грудь', totalSets: 4, muscles: { chest: { sets: 4 } }},
-          arms: { name: 'Руки и плечи', totalSets: 8, muscles: { biceps: { sets: 2 }, triceps: { sets: 2 }, front_delt: { sets: 2 }, mid_delt: { sets: 1 }, rear_delt: { sets: 1 } }}
+        const name = (ex?.name || '').toLowerCase();
+        for (const { keys, val } of NAME_KEYWORDS) {
+          if (keys.some((k) => name.includes(k))) return val;
         }
-      },
-      weeklyComparison: {
-        thisWeek: { count: 2, volume: 2050 },
-        lastWeek: { count: 2, volume: 2000 },
-        changes: { count: 0, volumePercent: 2 }
+        return fallback || { core: 1.0 };
       }
-    };
-    
-    // ═══════════════════════════════════════════════════════════
-    // MAIN
-    // ═══════════════════════════════════════════════════════════
-    
-    async function loadDashboard() {
-      if (DEMO_MODE) {
-        data = DEMO_DATA;
-        renderApp();
-        return;
+
+      function computeMuscleLoad(sets, exById, sessionDateMap) {
+        const groups = {
+          legs: { totalSets: 0, muscles: {} },
+          back: { totalSets: 0, muscles: {} },
+          chest: { totalSets: 0, muscles: {} },
+          arms: { totalSets: 0, muscles: {} },
+          core: { totalSets: 0, muscles: {} },
+        };
+        const muscleToGroup = {
+          quads: 'legs',
+          hamstrings: 'legs',
+          glutes: 'legs',
+          calves: 'legs',
+          lats: 'back',
+          traps: 'back',
+          low_back: 'back',
+          chest: 'chest',
+          biceps: 'arms',
+          triceps: 'arms',
+          front_delt: 'arms',
+          mid_delt: 'arms',
+          rear_delt: 'arms',
+          core: 'core',
+        };
+
+        sets.forEach((set) => {
+          const ex =
+            (set.exercises && typeof set.exercises === 'object' ? set.exercises : null) ||
+            exById[set.exercise_id];
+          const exForCoeffs =
+            ex || (set.exercise_name ? { name: String(set.exercise_name).trim() } : null);
+          const coeffs = getCoeffs(exForCoeffs);
+          Object.entries(coeffs).forEach(([muscle, val]) => {
+            const g = muscleToGroup[muscle];
+            if (!g) return;
+            if (!groups[g].muscles[muscle]) groups[g].muscles[muscle] = { sets: 0 };
+            groups[g].muscles[muscle].sets += val;
+            groups[g].totalSets += val;
+          });
+        });
+        return { groups };
       }
-      
-      if (!selectedClientId) {
-        showClientPicker();
-        return;
+
+      function parseNum(v) {
+        if (v == null || v === '') return 0;
+        const n = Number(v);
+        if (!isNaN(n)) return n;
+        const s = String(v).replace(',', '.');
+        const n2 = parseFloat(s);
+        return isNaN(n2) ? 0 : n2;
       }
-      
-      try {
-        data = await loadDashboardFromSupabase(selectedClientId);
-        API_CONFIG.CLIENT_ID = selectedClientId;
-        renderApp();
-        cacheData(`dashboard_${selectedClientId}`, data);
-      } catch (error) {
-        const cached = getCachedData(`dashboard_${selectedClientId}`);
-        if (cached) { data = cached; renderApp(); }
-        else { showError('Ошибка загрузки: ' + (error.message || error)); }
+      function normalizeExName(name) {
+        const s = String(name || '').trim();
+        const idx = s.indexOf(' (');
+        return idx > 0 ? s.slice(0, idx).trim() : s;
       }
-    }
-    
-    function showClientPicker() {
-      const list = clientsList.map(c => `
+      function computeExerciseProgress(sets, exById, sessionDateMap) {
+        const byEx = {};
+        sets.forEach((set) => {
+          const exId = set.exercise_id;
+          const ex =
+            exById[exId] ||
+            (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
+          const exName =
+            ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || 'Упражнение';
+          const normName = normalizeExName(exName);
+          const key = normName || '?';
+          const date = sessionDateMap[set.session_id];
+          if (!date) return;
+          const w = parseNum(set.weight);
+          const reps = parseNum(set.reps);
+          if (!byEx[key]) byEx[key] = { name: normName || exName, points: [] };
+          byEx[key].points.push({ date, weight: w, reps });
+        });
+        const improvements = [];
+        Object.entries(byEx).forEach(([, { name, points }]) => {
+          if (points.length < 2) return;
+          points.sort((a, b) => new Date(a.date) - new Date(b.date));
+          const byDate = {};
+          points.forEach((p) => {
+            const d = p.date;
+            const vol = p.weight * p.reps;
+            const score = vol > 0 ? vol : p.reps;
+            if (!byDate[d] || score > (byDate[d].weight * byDate[d].reps || byDate[d].reps))
+              byDate[d] = p;
+          });
+          const history = Object.entries(byDate)
+            .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+            .map(([d, p]) => ({ date: d, weight: p.weight, reps: p.reps }));
+          const first = history[0];
+          const isBwEx = isBodyweightByName(name);
+          const val = (p) => (isBwEx ? p.reps : p.weight > 0 ? p.weight : p.reps);
+          const best = history.reduce((b, p) => (val(p) > val(b) ? p : b), first);
+          const firstVal = val(first);
+          const bestVal = val(best);
+          const progressVal = bestVal - firstVal;
+          if (progressVal <= 0) return;
+          const progressPercent = firstVal > 0 ? Math.round((progressVal / firstVal) * 100) : 100;
+          improvements.push({
+            name,
+            firstWeight: first.weight,
+            currentWeight: best.weight,
+            firstReps: first.reps,
+            currentReps: best.reps,
+            isBodyweight: isBwEx,
+            progressKg:
+              !isBwEx && first.weight > 0 ? Math.round((best.weight - first.weight) * 10) / 10 : 0,
+            progressReps: isBwEx ? best.reps - first.reps : best.reps - first.reps,
+            progressPercent,
+            lastDate: best.date,
+            history,
+          });
+        });
+        improvements.sort((a, b) => b.progressPercent - a.progressPercent);
+        return { improvements: improvements.slice(0, 10), intensityHistory: {} };
+      }
+
+      const BODYWEIGHT_KEYS = ['подтяг', 'отжим', 'брусья', 'выход'];
+      function isBodyweightByName(name) {
+        if (!name) return false;
+        const n = String(name).toLowerCase();
+        return BODYWEIGHT_KEYS.some((k) => n.includes(k));
+      }
+      function computeAllRecords(sets, exById, sessionDateMap) {
+        const byEx = {};
+        sets.forEach((set) => {
+          const exId = set.exercise_id;
+          const ex =
+            exById[exId] ||
+            (set.exercises && typeof set.exercises === 'object' ? set.exercises : null);
+          const exName =
+            ex?.name || (set.exercise_name && String(set.exercise_name).trim()) || null;
+          const normName = normalizeExName(exName) || exName || 'Упражнение';
+          const w = parseNum(set.weight);
+          const reps = parseNum(set.reps);
+          const vol = w * reps;
+          const date = sessionDateMap[set.session_id];
+          if (!date) return;
+          const eq = ex?.equipment || '';
+          const isBw =
+            (eq &&
+              (String(eq).toLowerCase().includes('свой вес') ||
+                String(eq).toLowerCase().includes('тело'))) ||
+            isBodyweightByName(normName);
+          const newScore = vol > 0 ? vol : isBw ? reps : 0;
+          const cur = byEx[normName];
+          const curScore = cur ? (cur.vol > 0 ? cur.vol : cur.isBodyweight ? cur.reps : 0) : -1;
+          if (newScore > curScore) {
+            byEx[normName] = { vol, weight: w, reps, date, name: normName, isBodyweight: isBw };
+          }
+        });
+        return Object.entries(byEx)
+          .map(([, r]) => {
+            const isBw = r.isBodyweight || (r.weight === 0 && isBodyweightByName(r.name));
+            const showReps = isBw && r.reps > 0;
+            return {
+              name: r.name,
+              value: showReps ? r.reps : r.weight,
+              unit: showReps ? 'раз' : 'кг',
+              date: r.date,
+              hint: isBw && r.weight > 0 && !showReps ? ' (экв.)' : '',
+            };
+          })
+          .filter((r) => {
+            if (r.unit === 'кг' && r.value === 0) return false;
+            return true;
+          });
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // STATE
+      // ═══════════════════════════════════════════════════════════
+
+      let data = null;
+      let currentPage = 'main';
+      let currentPeriod = 'block';
+      let tonnageChart = null;
+      let selectedClientId = null;
+
+      // Демо-данные для локального тестирования
+      const DEMO_DATA = {
+        success: true,
+        clientId: 'demo',
+        period: 'block',
+        generatedAt: new Date().toISOString(),
+        profile: { name: 'Тестовый клиент' },
+        goals: {
+          clientName: 'Демо Клиент',
+          startDate: '2026-01-08',
+          mainGoals: 'ОФП, Подтягивания 15 раз, Коррекция осанки',
+        },
+        currentBlock: {
+          blockId: 1,
+          blockNumber: 1,
+          totalSessions: 10,
+          usedSessions: 3,
+          remaining: 7,
+          progress: 30,
+          status: 'active',
+        },
+        recentSessions: [
+          {
+            sessionId: 'S001',
+            date: '2026-01-24',
+            type: 'Тренировка',
+            splitType: 'Push',
+            duration: 60,
+            exerciseCount: 6,
+            totalSets: 11,
+            totalVolume: 1100,
+            exercises: [
+              { name: 'Жим гантелей лёжа', sets: 3, reps: 10, weight: 12.5 },
+              { name: 'Жим ногами', sets: 2, reps: 12, weight: 30 },
+            ],
+          },
+          {
+            sessionId: 'S002',
+            date: '2026-01-21',
+            type: 'Тренировка',
+            splitType: 'Pull',
+            duration: 55,
+            exerciseCount: 5,
+            totalSets: 10,
+            totalVolume: 950,
+            exercises: [],
+          },
+          {
+            sessionId: 'S003',
+            date: '2026-01-19',
+            type: 'Тренировка',
+            splitType: 'Legs',
+            duration: 50,
+            exerciseCount: 4,
+            totalSets: 9,
+            totalVolume: 1200,
+            exercises: [],
+          },
+        ],
+        exerciseProgress: {
+          improvements: [
+            {
+              name: 'Жим гантелей лёжа',
+              currentWeight: 12.5,
+              firstWeight: 7.5,
+              progressKg: 5,
+              progressPercent: 67,
+              lastDate: '2026-01-24',
+            },
+            {
+              name: 'Жим ногами',
+              currentWeight: 30,
+              firstWeight: 20,
+              progressKg: 10,
+              progressPercent: 50,
+              lastDate: '2026-01-19',
+            },
+          ],
+        },
+        muscleLoad: {
+          groups: {
+            legs: {
+              name: 'Ноги',
+              totalSets: 8.5,
+              muscles: {
+                quads: { sets: 4 },
+                hamstrings: { sets: 2 },
+                glutes: { sets: 2 },
+                calves: { sets: 0.5 },
+              },
+            },
+            back: {
+              name: 'Спина',
+              totalSets: 9,
+              muscles: { lats: { sets: 6 }, traps: { sets: 2 }, low_back: { sets: 1 } },
+            },
+            chest: { name: 'Грудь', totalSets: 4, muscles: { chest: { sets: 4 } } },
+            arms: {
+              name: 'Руки и плечи',
+              totalSets: 8,
+              muscles: {
+                biceps: { sets: 2 },
+                triceps: { sets: 2 },
+                front_delt: { sets: 2 },
+                mid_delt: { sets: 1 },
+                rear_delt: { sets: 1 },
+              },
+            },
+          },
+        },
+        weeklyComparison: {
+          thisWeek: { count: 2, volume: 2050 },
+          lastWeek: { count: 2, volume: 2000 },
+          changes: { count: 0, volumePercent: 2 },
+        },
+      };
+
+      // ═══════════════════════════════════════════════════════════
+      // MAIN
+      // ═══════════════════════════════════════════════════════════
+
+      async function loadDashboard() {
+        if (DEMO_MODE) {
+          data = DEMO_DATA;
+          renderApp();
+          return;
+        }
+
+        if (!selectedClientId) {
+          showClientPicker();
+          return;
+        }
+
+        try {
+          data = await loadDashboardFromSupabase(selectedClientId);
+          API_CONFIG.CLIENT_ID = selectedClientId;
+          renderApp();
+          cacheData(`dashboard_${selectedClientId}`, { data, _ts: Date.now() });
+        } catch (error) {
+          const raw = getCachedData(`dashboard_${selectedClientId}`);
+          const cached = raw?.data !== undefined ? raw.data : raw;
+          const ts = raw?._ts;
+          const cacheMaxAgeMs = 5 * 60 * 1000;
+          if (cached && ts != null && Date.now() - ts <= cacheMaxAgeMs) {
+            data = cached;
+            renderApp();
+          } else if (cached && (ts == null || Date.now() - ts > cacheMaxAgeMs)) {
+            showError(
+              'Ошибка загрузки: ' +
+                (error.message || error) +
+                '. Кэш устарел (старше 5 мин), нажмите «Обновить».'
+            );
+          } else {
+            showError('Ошибка загрузки: ' + (error.message || error));
+          }
+        }
+      }
+
+      function showClientPicker() {
+        const list = clientsList
+          .map(
+            (c) => `
         <div class="client-picker-item" onclick="selectClient('${c.id}')">
           <span class="client-picker-name">${c.name}</span>
           ${c.status ? `<span class="client-picker-status">${c.status}</span>` : ''}
         </div>
-      `).join('');
-      document.getElementById('app').innerHTML = `
+      `
+          )
+          .join('');
+        document.getElementById('app').innerHTML = `
         <div class="client-picker-wrap">
           <h2>Выберите клиента</h2>
           <p class="client-picker-desc">Данные загружаются из Supabase</p>
@@ -655,34 +1318,40 @@
           <button class="btn btn-secondary" onclick="handleLogout()">Выйти</button>
         </div>
       `;
-    }
-    
-    async function selectClient(clientId) {
-      selectedClientId = clientId;
-      try { localStorage.setItem('dashboard_client_id', clientId); } catch (e) {}
-      programsList = await loadProgramsFromSupabase(clientId);
-      await loadDashboard();
-    }
-    
-    function switchClient() {
-      selectedClientId = null;
-      try { localStorage.removeItem('dashboard_client_id'); } catch (e) {}
-      showClientPicker();
-    }
-    
-    function renderApp() {
-      const clientName = data.goals?.clientName || data.profile?.name || 'Клиент';
-      const startDate = data.goals?.startDate || '';
-      
-      // Debug panel
-      const debugPanel = DEBUG_MODE ? `
+      }
+
+      async function selectClient(clientId) {
+        selectedClientId = clientId;
+        try {
+          localStorage.setItem('dashboard_client_id', clientId);
+        } catch (e) {}
+        programsList = await loadProgramsFromSupabase(clientId);
+        await loadDashboard();
+      }
+
+      function switchClient() {
+        selectedClientId = null;
+        try {
+          localStorage.removeItem('dashboard_client_id');
+        } catch (e) {}
+        showClientPicker();
+      }
+
+      function renderApp() {
+        const clientName = data.goals?.clientName || data.profile?.name || 'Клиент';
+        const startDate = data.goals?.startDate || '';
+
+        // Debug panel
+        const debugPanel = DEBUG_MODE
+          ? `
         <div style="margin: 16px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 11px;">
           <strong>🔍 DEBUG</strong> ${DEMO_MODE ? '(DEMO)' : '(API)'}
           <pre style="margin-top: 8px; font-size: 10px;">${JSON.stringify(data.muscleLoad?.groups, null, 2)?.slice(0, 500)}</pre>
         </div>
-      ` : '';
-      
-      document.getElementById('app').innerHTML = `
+      `
+          : '';
+
+        document.getElementById('app').innerHTML = `
         <header class="header">
           <div class="header-top">
             <div>
@@ -723,29 +1392,29 @@
         <div class="modal-overlay" id="sessionModal" onclick="if(event.target===this)closeModal('sessionModal')"></div>
         <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
       `;
-      
-      if (currentPage === 'history') {
-        document.getElementById('historyPage').classList.add('active');
-        document.getElementById('mainPage').classList.add('hidden');
-        setTimeout(initTonnageChart, 100);
+
+        if (currentPage === 'history') {
+          document.getElementById('historyPage').classList.add('active');
+          document.getElementById('mainPage').classList.add('hidden');
+          setTimeout(initTonnageChart, 100);
+        }
       }
-    }
-    
-    // ═══════════════════════════════════════════════════════════
-    // RENDER FUNCTIONS
-    // ═══════════════════════════════════════════════════════════
-    
-    function renderBlockProgress() {
-      const block = data.currentBlock;
-      if (!block || block.status === 'none') {
-        return `<div class="card"><div class="card-title">${ICONS.block} БЛОК</div>
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER FUNCTIONS
+      // ═══════════════════════════════════════════════════════════
+
+      function renderBlockProgress() {
+        const block = data.currentBlock;
+        if (!block || block.status === 'none') {
+          return `<div class="card"><div class="card-title">${ICONS.block} БЛОК</div>
           <div class="empty-state"><div class="empty-icon">${ICONS.block}</div>Нет активного блока</div></div>`;
-      }
-      
-      const circumference = 2 * Math.PI * 35;
-      const offset = circumference - (block.progress / 100) * circumference;
-      
-      return `
+        }
+
+        const circumference = 2 * Math.PI * 35;
+        const offset = circumference - (block.progress / 100) * circumference;
+
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.block} БЛОК ${block.blockId || 1}</span></div>
           <div class="block-stats">
@@ -764,72 +1433,132 @@
           </div>
         </div>
       `;
-    }
-    
-    function renderMandatoryTasks() {
-      const tasks = data.mandatoryStats?.tasks || [];
-      if (!tasks.length) return '';
-      return `
+      }
+
+      function renderMandatoryTasks() {
+        const tasks = data.mandatoryStats?.tasks || [];
+        if (!tasks.length) return '';
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">✅ ОБЯЗАТЕЛЬНЫЕ ЗАДАЧИ</span></div>
           <div class="goals-list" style="flex-direction: column; gap: 8px;">
-            ${tasks.map(t => `
+            ${tasks
+              .map(
+                (t) => `
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 8px;">
                 <span>${t.name}</span>
                 <strong style="color: var(--accent);">${t.completed} раз</strong>
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
       `;
-    }
+      }
 
-    function renderGoals() {
-      const goalsText = data.goals?.mainGoals || '';
-      if (!goalsText) return '';
-      
-      const goals = goalsText.split(/[.,]/).map(g => g.trim()).filter(g => g.length > 2);
-      return `
+      function renderGoals() {
+        const goalsText = data.goals?.mainGoals || '';
+        if (!goalsText) return '';
+
+        const goals = goalsText
+          .split(/[.,]/)
+          .map((g) => g.trim())
+          .filter((g) => g.length > 2);
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.target} ЦЕЛИ</span></div>
-          <div class="goals-list">${goals.map(g => `<span class="goal-tag">${g}</span>`).join('')}</div>
+          <div class="goals-list">${goals.map((g) => `<span class="goal-tag">${g}</span>`).join('')}</div>
         </div>
       `;
-    }
-    
-    function renderMuscleLoad() {
-      const muscleLoad = data.muscleLoad;
-      const heatmap = data.muscleHeatmap;
-      
-      const hasMuscleLoadData = muscleLoad?.groups && Object.keys(muscleLoad.groups).length > 0;
-      const hasHeatmapData = heatmap?.muscles && Object.keys(heatmap.muscles).length > 0;
-      
-      if (!hasMuscleLoadData && !hasHeatmapData) {
-        return `<div class="card"><div class="card-title">${ICONS.muscle} НАГРУЗКА</div>
+      }
+
+      function renderMuscleLoad() {
+        const muscleLoad = data.muscleLoad;
+        const heatmap = data.muscleHeatmap;
+
+        const hasMuscleLoadData = muscleLoad?.groups && Object.keys(muscleLoad.groups).length > 0;
+        const hasHeatmapData = heatmap?.muscles && Object.keys(heatmap.muscles).length > 0;
+
+        if (!hasMuscleLoadData && !hasHeatmapData) {
+          const blockNote =
+            currentPeriod === 'block'
+              ? '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">По текущему блоку</div>'
+              : '';
+          return `<div class="card"><div class="card-title">${ICONS.muscle} НАГРУЗКА</div>${blockNote}
           <div class="empty-state"><div class="empty-icon">${ICONS.muscle}</div>Нет данных</div></div>`;
-      }
-      
-      const groupDefs = {
-        legs: { name: 'Ноги', icon: ICONS.leg, color: '#007aff', muscles: ['quads', 'hamstrings', 'glutes', 'calves'], labels: { quads: 'Квадрицепс', hamstrings: 'Бицепс бедра', glutes: 'Ягодицы', calves: 'Икры' }},
-        back: { name: 'Спина', icon: ICONS.back, color: '#5856d6', muscles: ['lats', 'traps', 'low_back'], labels: { lats: 'Широчайшие', traps: 'Трапеция', low_back: 'Поясница' }},
-        chest: { name: 'Грудь', icon: ICONS.chest, color: '#ff2d55', muscles: ['chest'], labels: { chest: 'Грудь' }},
-        arms: { name: 'Руки и плечи', icon: ICONS.muscle, color: '#ff9500', muscles: ['biceps', 'triceps', 'front_delt', 'mid_delt', 'rear_delt'], labels: { biceps: 'Бицепс', triceps: 'Трицепс', front_delt: 'Передняя дельта', mid_delt: 'Средняя дельта', rear_delt: 'Задняя дельта' }},
-        core: { name: 'Кор', icon: ICONS.muscle, color: '#34c759', muscles: ['core'], labels: { core: 'Пресс/кор' }}
-      };
-      
-      let maxGroupSets = 0;
-      const groups = {};
-      
-      if (hasMuscleLoadData) {
-        for (const [key, groupData] of Object.entries(muscleLoad.groups)) {
-          const def = groupDefs[key];
-          if (!def) continue;
-          groups[key] = { ...def, totalSets: groupData.totalSets || 0, muscleData: groupData.muscles || {} };
-          maxGroupSets = Math.max(maxGroupSets, groups[key].totalSets);
         }
-      }
-      
-      return `
+
+        const groupDefs = {
+          legs: {
+            name: 'Ноги',
+            icon: ICONS.leg,
+            color: '#007aff',
+            muscles: ['quads', 'hamstrings', 'glutes', 'calves'],
+            labels: {
+              quads: 'Квадрицепс',
+              hamstrings: 'Бицепс бедра',
+              glutes: 'Ягодицы',
+              calves: 'Икры',
+            },
+          },
+          back: {
+            name: 'Спина',
+            icon: ICONS.back,
+            color: '#5856d6',
+            muscles: ['lats', 'traps', 'low_back'],
+            labels: { lats: 'Широчайшие', traps: 'Трапеция', low_back: 'Поясница' },
+          },
+          chest: {
+            name: 'Грудь',
+            icon: ICONS.chest,
+            color: '#ff2d55',
+            muscles: ['chest'],
+            labels: { chest: 'Грудь' },
+          },
+          arms: {
+            name: 'Руки и плечи',
+            icon: ICONS.muscle,
+            color: '#ff9500',
+            muscles: ['biceps', 'triceps', 'front_delt', 'mid_delt', 'rear_delt'],
+            labels: {
+              biceps: 'Бицепс',
+              triceps: 'Трицепс',
+              front_delt: 'Передняя дельта',
+              mid_delt: 'Средняя дельта',
+              rear_delt: 'Задняя дельта',
+            },
+          },
+          core: {
+            name: 'Кор',
+            icon: ICONS.muscle,
+            color: '#34c759',
+            muscles: ['core'],
+            labels: { core: 'Пресс/кор' },
+          },
+        };
+
+        let maxGroupSets = 0;
+        const groups = {};
+
+        if (hasMuscleLoadData) {
+          for (const [key, groupData] of Object.entries(muscleLoad.groups)) {
+            const def = groupDefs[key];
+            if (!def) continue;
+            groups[key] = {
+              ...def,
+              totalSets: groupData.totalSets || 0,
+              muscleData: groupData.muscles || {},
+            };
+            maxGroupSets = Math.max(maxGroupSets, groups[key].totalSets);
+          }
+        }
+
+        const blockNote =
+          currentPeriod === 'block'
+            ? '<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">По текущему блоку</div>'
+            : '';
+        return `
         <div class="card">
           <div class="card-header">
             <span class="card-title">${ICONS.muscle} НАГРУЗКА</span>
@@ -839,10 +1568,13 @@
               <button class="period-btn ${currentPeriod === 'all' ? 'active' : ''}" onclick="setPeriod('all')">Всё</button>
             </div>
           </div>
+          ${blockNote}
           <div class="muscle-groups">
-            ${Object.entries(groups).sort((a, b) => b[1].totalSets - a[1].totalSets).map(([key, group]) => {
-              const width = maxGroupSets > 0 ? (group.totalSets / maxGroupSets) * 100 : 0;
-              return `
+            ${Object.entries(groups)
+              .sort((a, b) => b[1].totalSets - a[1].totalSets)
+              .map(([key, group]) => {
+                const width = maxGroupSets > 0 ? (group.totalSets / maxGroupSets) * 100 : 0;
+                return `
                 <div class="muscle-group" id="group-${key}">
                   <div class="muscle-group-header" onclick="toggleMuscleGroup('${key}')">
                     <div class="muscle-group-name"><span class="muscle-group-icon">${group.icon}</span>${group.name}</div>
@@ -853,28 +1585,39 @@
                     </div>
                   </div>
                   <div class="muscle-details">
-                    ${group.muscles.map(m => {
-                      const sets = group.muscleData[m]?.sets || 0;
-                      return `<div class="muscle-item"><span class="muscle-name">${group.labels[m]}</span><span class="muscle-value">${round(sets)}</span></div>`;
-                    }).join('')}
+                    ${group.muscles
+                      .map((m) => {
+                        const sets = group.muscleData[m]?.sets || 0;
+                        return `<div class="muscle-item"><span class="muscle-name">${group.labels[m]}</span><span class="muscle-value">${round(sets)}</span></div>`;
+                      })
+                      .join('')}
                   </div>
                 </div>
               `;
-            }).join('')}
+              })
+              .join('')}
           </div>
         </div>
       `;
-    }
-    
-    function renderWeeklyComparison() {
-      const apiComparison = data.weeklyComparison;
-      
-      let thisWeek = apiComparison?.thisWeek || { count: 0, volume: 0 };
-      let lastWeek = apiComparison?.lastWeek || { count: 0, volume: 0 };
-      let countChange = apiComparison?.changes?.count || (thisWeek.count - lastWeek.count);
-      let volumeChange = apiComparison?.changes?.volumePercent || 0;
-      
-      return `
+      }
+
+      function renderWeeklyComparison() {
+        const apiComparison = data.weeklyComparison;
+
+        let thisWeek = apiComparison?.thisWeek || { count: 0, volume: 0 };
+        let lastWeek = apiComparison?.lastWeek || { count: 0, volume: 0 };
+        let countChange = apiComparison?.changes?.count ?? thisWeek.count - lastWeek.count;
+        let volumeChange = apiComparison?.changes?.volumePercent;
+        if (volumeChange === undefined || volumeChange === null) {
+          if (thisWeek.volume === 0 && lastWeek.volume > 0) volumeChange = -100;
+          else if (lastWeek.volume === 0) volumeChange = thisWeek.volume > 0 ? 100 : 0;
+          else
+            volumeChange = Math.round(
+              ((thisWeek.volume - lastWeek.volume) / lastWeek.volume) * 100
+            );
+        }
+
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.chart} НЕДЕЛЯ VS ПРОШЛАЯ</span></div>
           <div class="weeks-comparison">
@@ -893,28 +1636,48 @@
           </div>
         </div>
       `;
-    }
-    
-    function renderProgress() {
-      const progress = data.exerciseProgress?.improvements || data.exerciseProgress?.topExercises || [];
-      const improved = progress.filter(ex => (ex.progressPercent || ex.progress) > 0);
-      
-      if (!improved.length) {
-        return `<div class="card"><div class="card-title">${ICONS.rocket} ПРОГРЕСС</div>
-          <div class="empty-state"><div class="empty-icon">${ICONS.rocket}</div>Пока нет данных о росте интенсивности</div></div>`;
       }
-      
-      const formatIntensity = (p) => p.weight > 0 ? `${p.weight} кг` : `${p.reps} раз`;
-      return `
+
+      function renderProgress() {
+        const progress =
+          data.exerciseProgress?.improvements || data.exerciseProgress?.topExercises || [];
+        const improved = progress.filter((ex) => (ex.progressPercent || ex.progress) > 0);
+
+        if (!improved.length) {
+          return `<div class="card"><div class="card-title">${ICONS.rocket} ПРОГРЕСС</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.rocket}</div>Пока нет данных о росте интенсивности</div></div>`;
+        }
+
+        const formatIntensity = (p) => (p.weight > 0 ? `${p.weight} кг` : `${p.reps} раз`);
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.rocket} ПРОГРЕСС</span></div>
-          ${improved.slice(0, 5).map(ex => {
-            const fmt = (p) => ex.isBodyweight ? `${p.reps} раз` : (p.weight > 0 ? `${p.weight} кг` : `${p.reps} раз`);
-            const hist = ex.history || [];
-            const histStr = hist.length > 1 ? hist.map(p => `${formatDate(p.date)}: ${fmt(p)}`).join(' → ') : '';
-            const mainVal = ex.isBodyweight ? `${ex.currentReps || 0} раз` : ((ex.currentWeight || 0) > 0 ? `${ex.currentWeight} кг` : `${ex.currentReps || 0} раз`);
-            const changeStr = (ex.progressKg || 0) > 0 ? `+${ex.progressKg} кг` : (ex.progressReps || 0) > 0 ? `+${ex.progressReps} раз` : '';
-            return `
+          ${improved
+            .slice(0, 5)
+            .map((ex) => {
+              const fmt = (p) =>
+                ex.isBodyweight
+                  ? `${p.reps} раз`
+                  : p.weight > 0
+                    ? `${p.weight} кг`
+                    : `${p.reps} раз`;
+              const hist = ex.history || [];
+              const histStr =
+                hist.length > 1
+                  ? hist.map((p) => `${formatDate(p.date)}: ${fmt(p)}`).join(' → ')
+                  : '';
+              const mainVal = ex.isBodyweight
+                ? `${ex.currentReps || 0} раз`
+                : (ex.currentWeight || 0) > 0
+                  ? `${ex.currentWeight} кг`
+                  : `${ex.currentReps || 0} раз`;
+              const changeStr =
+                (ex.progressKg || 0) > 0
+                  ? `+${ex.progressKg} кг`
+                  : (ex.progressReps || 0) > 0
+                    ? `+${ex.progressReps} раз`
+                    : '';
+              return `
             <div class="progress-item">
               <div class="progress-info">
                 <div class="progress-name">${ex.name}</div>
@@ -926,25 +1689,32 @@
                 ${changeStr ? `<div class="progress-change">${changeStr} (+${ex.progressPercent || 0}%)</div>` : ''}
               </div>
             </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>
       `;
-    }
-    
-    function renderRecentSessions() {
-      const sessions = data.recentSessions || [];
-      
-      if (!sessions.length) {
-        return `<div class="card"><div class="card-title">${ICONS.calendar} ТРЕНИРОВКИ</div>
-          <div class="empty-state"><div class="empty-icon">${ICONS.calendar}</div>Нет тренировок</div></div>`;
       }
-      
-      return `
+
+      function renderRecentSessions() {
+        const sessions = data.recentSessions || [];
+
+        if (!sessions.length) {
+          return `<div class="card"><div class="card-title">${ICONS.calendar} ТРЕНИРОВКИ</div>
+          <div class="empty-state"><div class="empty-icon">${ICONS.calendar}</div>Нет тренировок</div></div>`;
+        }
+
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.calendar} ПОСЛЕДНИЕ ТРЕНИРОВКИ</span></div>
-          ${sessions.slice(0, 3).map((s, i) => {
-            const exPreview = (s.exercises || []).slice(0, 3).map(e => e.name).filter(Boolean).join(', ');
-            return `
+          ${sessions
+            .slice(0, 3)
+            .map((s, i) => {
+              const exPreview = (s.exercises || [])
+                .slice(0, 3)
+                .map((e) => e.name)
+                .filter(Boolean)
+                .join(', ');
+              return `
             <div class="session-item" onclick="showSessionModal(${i})">
               <div class="session-header">
                 <span class="session-date">${formatDate(s.date)}</span>
@@ -957,83 +1727,113 @@
                 <span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span>
               </div>
             </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>
       `;
-    }
-    
-    function renderHistoryPage() {
-      const sessions = data.recentSessions || [];
-      return `
+      }
+
+      function renderHistoryPage() {
+        const sessions = data.recentSessions || [];
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.chartUp} ТОННАЖ</span></div>
           <div class="chart-container"><canvas id="tonnageChart"></canvas></div>
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.clipboard} ВСЕ ТРЕНИРОВКИ</span></div>
-          ${sessions.map((s, i) => {
-            const exPreview = (s.exercises || []).slice(0, 3).map(e => e.name).filter(Boolean).join(', ');
-            return `
+          ${sessions
+            .map((s, i) => {
+              const exPreview = (s.exercises || [])
+                .slice(0, 3)
+                .map((e) => e.name)
+                .filter(Boolean)
+                .join(', ');
+              return `
             <div class="session-item" onclick="showSessionModal(${i})">
               <div class="session-header"><span class="session-date">${formatDate(s.date)}</span><span class="session-type">${s.splitType || ''}</span></div>
               ${exPreview ? `<div class="session-exercises" style="font-size:13px;color:var(--text-secondary);margin:6px 0 4px;">${exPreview}</div>` : ''}
               <div class="session-stats"><span class="session-stat">${ICONS.weight} ${s.exerciseCount || 0} упр.</span><span class="session-stat">${ICONS.scale} ${formatNumber(s.totalVolume || 0)} кг</span></div>
             </div>`;
-          }).join('')}
+            })
+            .join('')}
         </div>
       `;
-    }
-    
-    function renderRecordsPage() {
-      const allRecs = data.allRecords || [];
-      const progress = data.exerciseProgress?.improvements || [];
-      const records = allRecs.length ? allRecs.map(r => ({ type: r.unit === 'раз' ? 'Макс. повторения' : 'Макс. вес', name: r.name, value: `${r.value} ${r.unit || 'кг'}${r.hint || ''}`, date: r.date, change: '' }))
-        : progress.filter(p => (p.progressPercent || p.progress) > 0).map(p => ({ type: 'Прогресс', name: p.name, value: `${p.currentWeight || p.lastWeight} кг`, date: p.lastDate, change: `+${p.progressKg} кг` }));
-      
-      return `
+      }
+
+      function renderRecordsPage() {
+        const allRecs = data.allRecords || [];
+        const progress = data.exerciseProgress?.improvements || [];
+        const records = allRecs.length
+          ? allRecs.map((r) => ({
+              type: r.unit === 'раз' ? 'Макс. повторения' : 'Макс. вес',
+              name: r.name,
+              value: `${r.value} ${r.unit || 'кг'}${r.hint || ''}`,
+              date: r.date,
+              change: '',
+            }))
+          : progress
+              .filter((p) => (p.progressPercent || p.progress) > 0)
+              .map((p) => ({
+                type: 'Прогресс',
+                name: p.name,
+                value: `${p.currentWeight || p.lastWeight} кг`,
+                date: p.lastDate,
+                change: `+${p.progressKg} кг`,
+              }));
+
+        return `
         <div class="card">
           <div class="card-header"><span class="card-title">${ICONS.trophy} РЕКОРДЫ</span></div>
-          ${records.length ? records.map(r => `
+          ${
+            records.length
+              ? records
+                  .map(
+                    (r) => `
             <div class="record-item">
               <div><div class="record-type">${r.type}</div><div class="record-name">${r.name}</div></div>
               <div class="record-value-container"><div class="record-value">${r.value}</div><div class="record-date">${r.date || ''}${r.change ? ' • ' + r.change : ''}</div></div>
             </div>
-          `).join('') : `<div class="empty-state"><div class="empty-icon">${ICONS.trophy}</div>Пока нет рекордов</div>`}
+          `
+                  )
+                  .join('')
+              : `<div class="empty-state"><div class="empty-icon">${ICONS.trophy}</div>Пока нет рекордов</div>`
+          }
         </div>
       `;
-    }
-    
-    // ═══════════════════════════════════════════════════════════
-    // INTERACTIONS
-    // ═══════════════════════════════════════════════════════════
-    
-    function toggleMuscleGroup(key) {
-      document.getElementById(`group-${key}`).classList.toggle('expanded');
-    }
-    
-    async function setPeriod(period) {
-      currentPeriod = period;
-      await loadDashboard();
-    }
-    
-    function showPage(page) {
-      currentPage = page;
-      document.querySelectorAll('.nav-item').forEach((item, i) => {
-        item.classList.toggle('active', ['main', 'history', 'records'][i] === page);
-      });
-      document.getElementById('mainPage').classList.toggle('hidden', page !== 'main');
-      document.getElementById('historyPage').classList.toggle('active', page === 'history');
-      document.getElementById('recordsPage').classList.toggle('active', page === 'records');
-      if (page === 'history') setTimeout(initTonnageChart, 100);
-    }
-    
-    function showSessionModal(index) {
-      const s = data.recentSessions[index];
-      if (!s) return;
-      const exercises = s.exercises || [];
-      
-      const workoutName = (s.splitType || s.type || '').trim() || 'Тренировка';
-      document.getElementById('sessionModal').innerHTML = `
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // INTERACTIONS
+      // ═══════════════════════════════════════════════════════════
+
+      function toggleMuscleGroup(key) {
+        document.getElementById(`group-${key}`).classList.toggle('expanded');
+      }
+
+      async function setPeriod(period) {
+        currentPeriod = period;
+        await loadDashboard();
+      }
+
+      function showPage(page) {
+        currentPage = page;
+        document.querySelectorAll('.nav-item').forEach((item, i) => {
+          item.classList.toggle('active', ['main', 'history', 'records'][i] === page);
+        });
+        document.getElementById('mainPage').classList.toggle('hidden', page !== 'main');
+        document.getElementById('historyPage').classList.toggle('active', page === 'history');
+        document.getElementById('recordsPage').classList.toggle('active', page === 'records');
+        if (page === 'history') setTimeout(initTonnageChart, 100);
+      }
+
+      function showSessionModal(index) {
+        const s = data.recentSessions[index];
+        if (!s) return;
+        const exercises = s.exercises || [];
+
+        const workoutName = (s.splitType || s.type || '').trim() || 'Тренировка';
+        document.getElementById('sessionModal').innerHTML = `
         <div class="modal">
           <div class="modal-handle"></div>
           <h2>${formatDate(s.date)}</h2>
@@ -1045,24 +1845,37 @@
               <div class="modal-stat"><div class="modal-stat-value">${formatNumber(s.totalVolume || 0)}</div><div class="modal-stat-label">Тоннаж</div></div>
             </div>
           </div>
-          ${exercises.length ? `<div class="modal-section"><div class="modal-section-title">${ICONS.weight} УПРАЖНЕНИЯ</div>
-            <div class="modal-exercise-list">${exercises.map(ex => {
-              const list = ex.setsList || (ex.sets ? [{ reps: ex.reps, weight: ex.weight }] : []);
-              const fmt = (w) => { const n = parseNum(w); return n % 1 === 0 ? n : Math.round(n * 100) / 100; };
-              const detail = list.length ? list.map(x => {
-                const w = parseNum(x.weight);
-                return w > 0 ? `${x.reps}×${fmt(w)} кг` : `${x.reps} раз`;
-              }).join(', ') : `${ex.sets || 0}×${ex.reps || 0} • ${parseNum(ex.weight)} кг`;
-              return `<div class="modal-exercise"><span class="modal-exercise-name">${ex.name}</span><span class="modal-exercise-detail">${detail}</span></div>`;
-            }).join('')}</div></div>` : ''}
+          ${
+            exercises.length
+              ? `<div class="modal-section"><div class="modal-section-title">${ICONS.weight} УПРАЖНЕНИЯ</div>
+            <div class="modal-exercise-list">${exercises
+              .map((ex) => {
+                const list = ex.setsList || (ex.sets ? [{ reps: ex.reps, weight: ex.weight }] : []);
+                const fmt = (w) => {
+                  const n = parseNum(w);
+                  return n % 1 === 0 ? n : Math.round(n * 100) / 100;
+                };
+                const detail = list.length
+                  ? list
+                      .map((x) => {
+                        const w = parseNum(x.weight);
+                        return w > 0 ? `${x.reps}×${fmt(w)} кг` : `${x.reps} раз`;
+                      })
+                      .join(', ')
+                  : `${ex.sets || 0}×${ex.reps || 0} • ${parseNum(ex.weight)} кг`;
+                return `<div class="modal-exercise"><span class="modal-exercise-name">${ex.name}</span><span class="modal-exercise-detail">${detail}</span></div>`;
+              })
+              .join('')}</div></div>`
+              : ''
+          }
           ${s.notes ? `<div class="modal-section"><div class="modal-section-title">ЗАМЕТКИ</div><div style="padding: 12px; background: var(--bg); border-radius: 8px;">${s.notes}</div></div>` : ''}
         </div>
       `;
-      document.getElementById('sessionModal').classList.add('active');
-    }
-    
-    function showSettingsModal() {
-      document.getElementById('settingsModal').innerHTML = `
+        document.getElementById('sessionModal').classList.add('active');
+      }
+
+      function showSettingsModal() {
+        document.getElementById('settingsModal').innerHTML = `
         <div class="modal settings-modal">
           <h2>${ICONS.gear} Настройки</h2>
           <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Данные загружаются из Supabase. Клиент выбран в дашборде.</p>
@@ -1074,53 +1887,55 @@
           </div>
         </div>
       `;
-      document.getElementById('settingsModal').classList.add('active');
-    }
-    
-    function saveSettingsAndReload() {
-      API_CONFIG.URL = document.getElementById('apiUrlInput').value.trim();
-      API_CONFIG.CLIENT_ID = document.getElementById('clientIdInput').value.trim() || 'yaroslav';
-      closeModal('settingsModal');
-      loadDashboard();
-    }
-    
-    function initTonnageChart() {
-      const canvas = document.getElementById('tonnageChart');
-      if (!canvas) return;
-      
-      const sessions = (data.recentSessions || []).slice(0, 10).reverse();
-      if (tonnageChart) tonnageChart.destroy();
-      
-      tonnageChart = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: sessions.map(s => formatDate(s.date)),
-          datasets: [{
-            label: 'Тоннаж (кг)',
-            data: sessions.map(s => s.totalVolume || 0),
-            borderColor: '#0071e3',
-            backgroundColor: 'rgba(0, 113, 227, 0.1)',
-            borderWidth: 2,
-            pointRadius: 5,
-            pointBackgroundColor: '#0071e3',
-            tension: 0.3,
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: '#e5e5e5' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-    }
-    
-    function showSetupScreen() {
-      document.getElementById('app').innerHTML = `
+        document.getElementById('settingsModal').classList.add('active');
+      }
+
+      function saveSettingsAndReload() {
+        API_CONFIG.URL = document.getElementById('apiUrlInput').value.trim();
+        API_CONFIG.CLIENT_ID = document.getElementById('clientIdInput').value.trim() || 'yaroslav';
+        closeModal('settingsModal');
+        loadDashboard();
+      }
+
+      function initTonnageChart() {
+        const canvas = document.getElementById('tonnageChart');
+        if (!canvas) return;
+
+        const sessions = (data.recentSessions || []).slice(0, 10).reverse();
+        if (tonnageChart) tonnageChart.destroy();
+
+        tonnageChart = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: sessions.map((s) => formatDate(s.date)),
+            datasets: [
+              {
+                label: 'Тоннаж (кг)',
+                data: sessions.map((s) => s.totalVolume || 0),
+                borderColor: '#0071e3',
+                backgroundColor: 'rgba(0, 113, 227, 0.1)',
+                borderWidth: 2,
+                pointRadius: 5,
+                pointBackgroundColor: '#0071e3',
+                tension: 0.3,
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, grid: { color: '#e5e5e5' } },
+              x: { grid: { display: false } },
+            },
+          },
+        });
+      }
+
+      function showSetupScreen() {
+        document.getElementById('app').innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center;">
           <div style="font-size: 64px; margin-bottom: 20px;">${ICONS.gear}</div>
           <h2>Настройте подключение</h2>
@@ -1129,10 +1944,10 @@
         </div>
         <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
       `;
-    }
-    
-    function showError(msg) {
-      document.getElementById('app').innerHTML = `
+      }
+
+      function showError(msg) {
+        document.getElementById('app').innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px; text-align: center;">
           <div style="font-size: 48px; margin-bottom: 16px;">${ICONS.sad}</div>
           <div style="color: var(--danger); margin-bottom: 8px;">Ошибка</div>
@@ -1141,26 +1956,26 @@
         </div>
         <div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"></div>
       `;
-    }
-    
-    // Init: проверка сессии → загрузка клиентов → выбор клиента или дашборд
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (!(await requireAuth())) return;
-      try {
-        clientsList = await loadClientsFromSupabase();
-        selectedClientId = localStorage.getItem('dashboard_client_id') || null;
-        if (selectedClientId && clientsList.some(c => c.id === selectedClientId)) {
-          programsList = await loadProgramsFromSupabase(selectedClientId);
-          await loadDashboard();
-        } else {
-          selectedClientId = null;
-          if (clientsList.length === 0) showClientPicker();
-          else showClientPicker();
-        }
-      } catch (e) {
-        showError('Ошибка: ' + (e.message || e));
       }
-    });
-  </script>
-</body>
+
+      // Init: проверка сессии → загрузка клиентов → выбор клиента или дашборд
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (!(await requireAuth())) return;
+        try {
+          clientsList = await loadClientsFromSupabase();
+          selectedClientId = localStorage.getItem('dashboard_client_id') || null;
+          if (selectedClientId && clientsList.some((c) => c.id === selectedClientId)) {
+            programsList = await loadProgramsFromSupabase(selectedClientId);
+            await loadDashboard();
+          } else {
+            selectedClientId = null;
+            if (clientsList.length === 0) showClientPicker();
+            else showClientPicker();
+          }
+        } catch (e) {
+          showError('Ошибка: ' + (e.message || e));
+        }
+      });
+    </script>
+  </body>
 </html>

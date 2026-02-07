@@ -161,12 +161,25 @@
       )
       .order('start_date', { ascending: false });
     if (error) throw new Error(error.message);
-    const blocks = (data || []).map((b, i) => ({
+    const list = data || [];
+    // Единый источник: число выполненных тренировок = COUNT(workout_sessions) по блоку
+    const usedByBlock = {};
+    await Promise.all(
+      list.map(async (b) => {
+        const { count } = await supabase
+          .from('workout_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('block_id', b.id)
+          .eq('status', 'completed');
+        usedByBlock[b.id] = count != null ? count : 0;
+      })
+    );
+    const blocks = list.map((b, i) => ({
       blockId: i + 1,
       id: b.id,
       name: b.name,
       totalSessions: b.total_sessions || 0,
-      usedSessions: b.used_sessions || 0,
+      usedSessions: usedByBlock[b.id] != null ? usedByBlock[b.id] : b.used_sessions || 0,
       startDate: b.start_date,
       status: b.status || 'active',
     }));

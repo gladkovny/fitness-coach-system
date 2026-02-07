@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Рабочий кабинет тренера — Fitness Coach</title>
+    <link rel="stylesheet" href="../css/common.css" />
+    <style>
+      .cabinet-wrap {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .cabinet-nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+      .cabinet-nav button {
+        padding: 10px 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .cabinet-nav button.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+      .cabinet-nav button:hover:not(.active) {
+        background: var(--bg);
+      }
+      .cabinet-section {
+        display: none;
+        background: var(--card);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow);
+        padding: 20px;
+      }
+      .cabinet-section.active {
+        display: block;
+      }
+      .cabinet-section h2 {
+        font-size: 18px;
+        margin-bottom: 16px;
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .data-table th,
+      .data-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-table th {
+        background: var(--bg);
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+      .data-table tr:hover {
+        background: var(--bg);
+      }
+      .data-table .clickable {
+        cursor: pointer;
+      }
+      .btn-sm {
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        cursor: pointer;
+        margin-right: 4px;
+      }
+      .btn-sm.primary {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+      .btn-sm.danger {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
+      }
+      .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      .filter-row select {
+        padding: 8px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .form-group {
+        margin-bottom: 14px;
+      }
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+      }
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        width: 100%;
+        max-width: 400px;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        font-size: 14px;
+      }
+      .form-actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+      }
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal-overlay.active {
+        display: flex;
+      }
+      .modal-box {
+        background: var(--card);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .modal-box h3 {
+        margin-bottom: 16px;
+      }
+      .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+      }
+      .client-picker-wrap {
+        min-height: 60vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .client-picker-list {
+        max-width: 400px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .client-picker-item {
+        background: var(--card);
+        padding: 16px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      .client-picker-item:hover {
+        background: var(--bg);
+      }
+      .header-client-select {
+        cursor: pointer;
+        text-decoration: underline;
+        font-size: 14px;
+        color: var(--accent);
+        margin-top: 4px;
+      }
+      .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .header-top .header-actions {
+        margin-left: auto;
+        margin-right: 24px;
+      }
+      .header .header-actions .settings-btn {
+        background: transparent;
+        box-shadow: none;
+      }
+      .editable-cell {
+        cursor: pointer;
+        min-width: 2em;
+      }
+      .editable-cell:hover {
+        background: var(--accent-light);
+      }
+      .profile-calc {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div
+        class="cabinet-wrap"
+        style="padding: 24px; text-align: center; color: var(--text-secondary)"
+      >
+        Загрузка…
+      </div>
+    </div>
+
+    <script src="../js/supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/utils.js"></script>
+    <script>
+      let supabaseClient = null;
+      let clientsList = [];
+      let selectedClientId = null;
+      let cabinetData = {
+        sessions: [],
+        setsBySession: {},
+        client: null,
+        blocks: [],
+        programs: [],
+        exercises: [],
+      };
+      let currentPeriod = 'all';
+      let selectedSessionId = null;
+
+      async function requireAuth() {
+        const {
+          data: { session },
+        } = await supabaseClient.auth.getSession();
+        if (!session) {
+          window.location.href =
+            '../login.html?redirect=' + encodeURIComponent('cabinet/index.html');
+          return false;
+        }
+        return true;
+      }
+
+      async function loadClients() {
+        const { data, error } = await supabaseClient
+          .from('clients')
+          .select('id, name, email, status')
+          .order('name');
+        if (error) throw error;
+        return data || [];
+      }
+
+      function showClientPicker() {
+        const list = clientsList
+          .map(
+            (c) => `
+        <div class="client-picker-item" data-id="${c.id}">
+          <strong>${c.name}</strong> ${c.email ? `<span style="color:var(--text-secondary);font-size:13px;">${c.email}</span>` : ''}
+        </div>
+      `
+          )
+          .join('');
+        document.getElementById('app').innerHTML = `
+        <header class="header">
+          <div class="header-top"><h1>Рабочий кабинет тренера</h1><button class="settings-btn" onclick="handleLogout()">Выйти</button></div>
+        </header>
+        <div class="client-picker-wrap">
+          <h2>Выберите клиента</h2>
+          <p style="color:var(--text-secondary);margin-bottom:20px;">Данные из Supabase</p>
+          <div class="client-picker-list">${list.length ? list : '<div class="empty-state">Нет клиентов</div>'}</div>
+        </div>
+      `;
+        document.querySelectorAll('.client-picker-item').forEach((el) => {
+          el.addEventListener('click', () => selectClient(el.dataset.id));
+        });
+      }
+
+      async function selectClient(clientId) {
+        selectedClientId = clientId;
+        try {
+          localStorage.setItem('cabinet_client_id', clientId);
+        } catch (e) {}
+        await loadCabinetData();
+        renderCabinet();
+      }
+
+      function switchClient() {
+        selectedClientId = null;
+        try {
+          localStorage.removeItem('cabinet_client_id');
+        } catch (e) {}
+        showClientPicker();
+      }
+
+      async function loadCabinetData() {
+        if (!selectedClientId) return;
+        const cutoff3m = new Date();
+        cutoff3m.setDate(cutoff3m.getDate() - 90);
+        const cutoffStr = cutoff3m.toISOString().slice(0, 10);
+
+        const [
+          { data: client, error: clientErr },
+          { data: sessions, error: sessErr },
+          { data: programs },
+        ] = await Promise.all([
+          supabaseClient.from('clients').select('*').eq('id', selectedClientId).single(),
+          supabaseClient
+            .from('workout_sessions')
+            .select('id, client_id, block_id, date, type, status, notes, total_tonnage, created_at')
+            .eq('client_id', selectedClientId)
+            .order('date', { ascending: false })
+            .limit(500),
+          supabaseClient
+            .from('programs')
+            .select('id, name, type, status')
+            .eq('client_id', selectedClientId),
+        ]);
+        const programIds = (programs || []).map((p) => p.id);
+        let blocks = [];
+        if (programIds.length) {
+          const { data: blocksData } = await supabaseClient
+            .from('training_blocks')
+            .select('id, name, total_sessions, start_date, end_date, cost, status, program_id')
+            .in('program_id', programIds);
+          blocks = blocksData || [];
+        }
+        const [{ data: exercises }, { data: mandatoryTasks }] = await Promise.all([
+          supabaseClient.from('exercises').select('id, name, category').limit(500),
+          supabaseClient
+            .from('mandatory_tasks')
+            .select('id, name, category, block_id')
+            .eq('client_id', selectedClientId)
+            .eq('active', true),
+        ]);
+
+        if (clientErr || !client) throw new Error('Клиент не найден');
+        if (sessErr) throw sessErr;
+
+        const blockIds = blocks.map((b) => b.id);
+        const sessionIds = (sessions || []).map((s) => s.id);
+
+        let setsBySession = {};
+        if (sessionIds.length) {
+          const { data: sets } = await supabaseClient
+            .from('workout_sets')
+            .select('id, session_id, exercise_id, exercise_name, set_number, reps, weight, rpe')
+            .in('session_id', sessionIds)
+            .order('set_number');
+          (sets || []).forEach((st) => {
+            if (!setsBySession[st.session_id]) setsBySession[st.session_id] = [];
+            setsBySession[st.session_id].push(st);
+          });
+        }
+
+        const completedByBlock = {};
+        for (const bid of blockIds) {
+          const { count } = await supabaseClient
+            .from('workout_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('block_id', bid)
+            .eq('status', 'completed');
+          completedByBlock[bid] = count ?? 0;
+        }
+
+        const exerciseIdToName = {};
+        (exercises || []).forEach((e) => {
+          exerciseIdToName[e.id] = e.name;
+        });
+        const allSetsArr = Object.values(setsBySession).flat();
+        const setExIds = [...new Set(allSetsArr.map((st) => st.exercise_id).filter(Boolean))];
+        const missingIds = setExIds.filter((id) => !exerciseIdToName[id]);
+        if (missingIds.length) {
+          const { data: exFromSets } = await supabaseClient
+            .from('exercises')
+            .select('id, name')
+            .in('id', missingIds);
+          (exFromSets || []).forEach((e) => {
+            exerciseIdToName[e.id] = e.name;
+          });
+        }
+        let lastDailyWeight = null;
+        const { data: lastLog } = await supabaseClient
+          .from('daily_logs')
+          .select('weight')
+          .eq('client_id', selectedClientId)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastLog?.weight != null) lastDailyWeight = Number(lastLog.weight);
+        cabinetData = {
+          client,
+          lastDailyWeight,
+          sessions: sessions || [],
+          setsBySession,
+          programs: programs || [],
+          blocks: (blocks || []).map((b) => ({ ...b, usedSessions: completedByBlock[b.id] ?? 0 })),
+          exercises: exercises || [],
+          exerciseIdToName,
+          mandatoryTasks: mandatoryTasks || [],
+        };
+      }
+
+      function filterSessions() {
+        const { sessions } = cabinetData;
+        const activeBlock =
+          cabinetData.blocks.find((b) => b.status === 'active') || cabinetData.blocks[0];
+        const cutoff3m = new Date();
+        cutoff3m.setDate(cutoff3m.getDate() - 90);
+        const cutoffStr = cutoff3m.toISOString().slice(0, 10);
+        if (currentPeriod === 'block' && activeBlock)
+          return sessions.filter((s) => s.block_id === activeBlock.id);
+        if (currentPeriod === '3m') return sessions.filter((s) => (s.date || '') >= cutoffStr);
+        return sessions;
+      }
+
+      function renderCabinet() {
+        const client = cabinetData.client;
+        const filtered = filterSessions();
+        const nav = `
+        <div class="cabinet-nav">
+          <button class="nav-tab active" data-tab="profile">Профиль</button>
+          <button class="nav-tab" data-tab="sessions">Сессии</button>
+          <button class="nav-tab" data-tab="blocks">Блоки</button>
+          <button class="nav-tab" data-tab="load">Нагрузка</button>
+        </div>
+      `;
+        const sections = `
+        <div id="section-profile" class="cabinet-section active">${renderProfileSection()}</div>
+        <div id="section-sessions" class="cabinet-section">${renderSessionsSection(filtered)}</div>
+        <div id="section-blocks" class="cabinet-section">${renderBlocksSection()}</div>
+        <div id="section-load" class="cabinet-section">${renderLoadSection(filtered)}</div>
+      `;
+        document.getElementById('app').innerHTML = `
+        <header class="header">
+          <div class="header-top">
+            <div><h1>${client?.name || 'Клиент'}</h1><div class="header-client-select" onclick="switchClient()">Сменить клиента</div></div>
+            <div class="header-actions"><button class="settings-btn" onclick="handleLogout()">Выйти</button></div>
+          </div>
+        </header>
+        <div class="cabinet-wrap">
+          ${nav}
+          ${sections}
+        </div>
+      `;
+        document.querySelectorAll('.nav-tab').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.nav-tab').forEach((b) => b.classList.remove('active'));
+            document
+              .querySelectorAll('.cabinet-section')
+              .forEach((s) => s.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('section-' + btn.dataset.tab).classList.add('active');
+          });
+        });
+        bindSessionRowClicks();
+        bindProfileSection();
+        bindBlocksSection();
+      }
+      function bindBlocksSection() {
+        document.querySelectorAll('.save-block-btn').forEach((btn) => {
+          btn.addEventListener('click', () => saveBlock(btn.dataset.blockId));
+        });
+      }
+      function bindProfileSection() {
+        updateProfileCalcs();
+        renderProfileBlockTasks();
+        const blockSel = document.getElementById('profileBlock');
+        if (blockSel) blockSel.addEventListener('change', renderProfileBlockTasks);
+        ['profileWeight', 'profileHeight', 'profileBodyFat'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', updateProfileCalcs);
+        });
+      }
+
+      function renderSessionsSection(filtered) {
+        const periodSelect = `
+        <div class="filter-row">
+          <label>Период:</label>
+          <select id="periodSelect">
+            <option value="all" ${currentPeriod === 'all' ? 'selected' : ''}>Всё</option>
+            <option value="3m" ${currentPeriod === '3m' ? 'selected' : ''}>3 мес</option>
+            <option value="block" ${currentPeriod === 'block' ? 'selected' : ''}>Блок</option>
+          </select>
+        </div>
+      `;
+        if (!filtered.length)
+          return periodSelect + '<div class="empty-state">Нет сессий за выбранный период</div>';
+        const rows = filtered
+          .map(
+            (s) => `
+        <tr class="clickable" data-session-id="${s.id}">
+          <td>${(s.date || '').slice(0, 10)}</td>
+          <td>${s.type || '—'}</td>
+          <td>${s.total_tonnage != null ? Number(s.total_tonnage) : '—'}</td>
+          <td>${s.block_id ? 'да' : '—'}</td>
+        </tr>
+      `
+          )
+          .join('');
+        return (
+          periodSelect +
+          `
+        <table class="data-table">
+          <thead><tr><th>Дата</th><th>Тип</th><th>Тоннаж</th><th>Блок</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `
+        );
+      }
+
+      function bindSessionRowClicks() {
+        const sel = document.getElementById('periodSelect');
+        if (sel)
+          sel.addEventListener('change', async () => {
+            currentPeriod = sel.value;
+            await loadCabinetData();
+            renderCabinet();
+          });
+        document.querySelectorAll('#section-sessions tr.clickable').forEach((tr) => {
+          tr.addEventListener('click', () => openSessionDetail(tr.dataset.sessionId));
+        });
+      }
+
+      function getExerciseName(st) {
+        return (
+          cabinetData.exerciseIdToName?.[st.exercise_id] ||
+          (st.exercise_name && st.exercise_name.trim()) ||
+          '—'
+        );
+      }
+      function sessionLoadByExercise(sets) {
+        const byEx = {};
+        sets.forEach((st) => {
+          const name = getExerciseName(st);
+          if (!byEx[name]) byEx[name] = { sets: 0, volume: 0 };
+          byEx[name].sets += 1;
+          byEx[name].volume += (Number(st.weight) || 0) * (Number(st.reps) || 0);
+        });
+        return byEx;
+      }
+      function openSessionDetail(sessionId) {
+        selectedSessionId = sessionId;
+        const session = cabinetData.sessions.find((s) => s.id === sessionId);
+        const sets = (cabinetData.setsBySession[sessionId] || []).sort(
+          (a, b) => (a.set_number || 0) - (b.set_number || 0)
+        );
+        const loadByEx = sessionLoadByExercise(sets);
+        const loadRows = Object.entries(loadByEx)
+          .map(
+            ([name, v]) =>
+              `<tr><td>${name}</td><td>${v.sets}</td><td>${Math.round(v.volume)}</td></tr>`
+          )
+          .join('');
+        const setRows = sets
+          .map((st) => {
+            const dispName = getExerciseName(st);
+            return `
+        <tr data-set-id="${st.id}">
+          <td class="editable-cell" data-field="exercise_name" data-set-id="${st.id}">${dispName}</td>
+          <td>${st.set_number}</td>
+          <td class="editable-cell" data-field="reps" data-set-id="${st.id}">${st.reps ?? '—'}</td>
+          <td class="editable-cell" data-field="weight" data-set-id="${st.id}">${st.weight ?? '—'}</td>
+          <td>${st.rpe ?? '—'}</td>
+          <td><button class="btn-sm danger delete-set">Удалить</button></td>
+        </tr>
+      `;
+          })
+          .join('');
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay active';
+        modal.id = 'sessionModal';
+        modal.innerHTML = `
+        <div class="modal-box" style="max-width:720px;">
+          <h3>Сессия ${(session?.date || '').slice(0, 10)} — ${session?.type || ''}</h3>
+          <div class="form-group"><label>Дата</label><input type="date" id="editSessionDate" value="${(session?.date || '').slice(0, 10)}"></div>
+          <div class="form-group"><label>Тип (название)</label><input type="text" id="editSessionType" value="${session?.type || ''}"></div>
+          <div class="form-group"><label>Заметки</label><textarea id="editSessionNotes" rows="2">${session?.notes || ''}</textarea></div>
+          <div class="form-group"><label>Блок</label><select id="editSessionBlock"><option value="" ${!session?.block_id ? 'selected' : ''}>— без блока —</option>${cabinetData.blocks.map((b) => `<option value="${b.id}" ${session?.block_id === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}</select></div>
+          <div class="form-actions"><button class="btn btn-primary" id="saveSessionBtn">Сохранить сессию</button><button class="btn btn-secondary" id="deleteSessionBtn">Удалить сессию</button><button class="btn btn-secondary" id="closeSessionModal">Закрыть</button></div>
+          <h4 style="margin:20px 0 10px;">Распределение нагрузки по упражнениям</h4>
+          <table class="data-table"><thead><tr><th>Упражнение</th><th>Подходов</th><th>Тоннаж (кг)</th></tr></thead><tbody>${loadRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody></table>
+          <h4 style="margin:20px 0 10px;">Подходы (нажмите на название, вес или повторения для редактирования)</h4>
+          <table class="data-table"><thead><tr><th>Упражнение</th><th>№</th><th>Повторения</th><th>Вес</th><th>RPE</th><th></th></tr></thead><tbody>${setRows}</tbody></table>
+        </div>
+      `;
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeSessionModal();
+        });
+        document.body.appendChild(modal);
+
+        document.getElementById('closeSessionModal').addEventListener('click', closeSessionModal);
+        document.getElementById('saveSessionBtn').addEventListener('click', saveSession);
+        document.getElementById('deleteSessionBtn').addEventListener('click', deleteSessionConfirm);
+        document
+          .querySelectorAll('.delete-set')
+          .forEach((btn) =>
+            btn.addEventListener('click', (e) =>
+              deleteSetConfirm(e.target.closest('tr').dataset.setId)
+            )
+          );
+        document.querySelectorAll('#sessionModal .editable-cell').forEach((cell) => {
+          cell.addEventListener('click', function () {
+            const setId = this.dataset.setId;
+            const field = this.dataset.field;
+            const current = this.textContent.trim();
+            const newVal = prompt(
+              field === 'exercise_name' ? 'Упражнение' : field === 'weight' ? 'Вес' : 'Повторения',
+              current
+            );
+            if (newVal === null) return;
+            const payload = {};
+            if (field === 'exercise_name') payload.exercise_name = newVal.trim() || null;
+            else if (field === 'reps') payload.reps = newVal === '' ? null : parseInt(newVal, 10);
+            else if (field === 'weight')
+              payload.weight = newVal === '' ? null : parseFloat(newVal.replace(',', '.'));
+            if (Object.keys(payload).length) updateSet(setId, payload);
+          });
+        });
+      }
+
+      function closeSessionModal() {
+        document.getElementById('sessionModal')?.remove();
+        selectedSessionId = null;
+      }
+
+      async function saveSession() {
+        const date = document.getElementById('editSessionDate').value;
+        const type = document.getElementById('editSessionType').value.trim();
+        const notes = document.getElementById('editSessionNotes').value.trim();
+        const blockVal = document.getElementById('editSessionBlock').value;
+        const block_id = blockVal || null;
+        const { error } = await supabaseClient
+          .from('workout_sessions')
+          .update({ date, type: type || null, notes: notes || null, block_id })
+          .eq('id', selectedSessionId)
+          .eq('client_id', selectedClientId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        closeSessionModal();
+        renderCabinet();
+      }
+
+      function deleteSessionConfirm() {
+        if (!confirm('Удалить сессию и все подходы?')) return;
+        deleteSession();
+      }
+
+      async function deleteSession() {
+        const { error } = await supabaseClient
+          .from('workout_sessions')
+          .delete()
+          .eq('id', selectedSessionId)
+          .eq('client_id', selectedClientId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        closeSessionModal();
+        renderCabinet();
+      }
+
+      async function updateSet(setId, payload) {
+        const { error } = await supabaseClient.from('workout_sets').update(payload).eq('id', setId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        openSessionDetail(selectedSessionId);
+      }
+
+      function deleteSetConfirm(setId) {
+        if (!confirm('Удалить подход?')) return;
+        deleteSet(setId);
+      }
+
+      async function deleteSet(setId) {
+        const { error } = await supabaseClient.from('workout_sets').delete().eq('id', setId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        openSessionDetail(selectedSessionId);
+      }
+
+      function renderProfileSection() {
+        const c = cabinetData.client;
+        const p = c?.profile || {};
+        const w =
+          Number(
+            p.weight ??
+              p.weight_kg ??
+              p.startWeight ??
+              p.start_weight ??
+              cabinetData.lastDailyWeight ??
+              ''
+          ) || '';
+        const h = Number(p.height ?? p.height_cm ?? '') || '';
+        const bf = Number(p.body_fat ?? p.bodyFat ?? '') || '';
+        const activeBlockId = p.active_block_id || p.activeBlockId || '';
+        const tasksForBlock = (cabinetData.mandatoryTasks || []).filter(
+          (t) => !t.block_id || t.block_id === activeBlockId
+        );
+        const blockOptions =
+          '<option value="">— не выбран —</option>' +
+          cabinetData.blocks
+            .map(
+              (b) =>
+                `<option value="${b.id}" ${b.id === activeBlockId ? 'selected' : ''}>${(b.name || '').replace(/</g, '&lt;')}</option>`
+            )
+            .join('');
+        return `
+        <h2>Профиль клиента</h2>
+        <div class="form-group"><label>Имя</label><input type="text" id="profileName" value="${c?.name || ''}"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="profileEmail" value="${c?.email || ''}"></div>
+        <div class="form-group"><label>Статус</label><select id="profileStatus"><option value="lead" ${c?.status === 'lead' ? 'selected' : ''}>lead</option><option value="onboarding" ${c?.status === 'onboarding' ? 'selected' : ''}>onboarding</option><option value="active" ${c?.status === 'active' ? 'selected' : ''}>active</option><option value="paused" ${c?.status === 'paused' ? 'selected' : ''}>paused</option><option value="churned" ${c?.status === 'churned' ? 'selected' : ''}>churned</option></select></div>
+        <div class="form-group"><label>Вес (кг)</label><input type="number" id="profileWeight" step="0.1" value="${w}" placeholder="кг"></div>
+        <div class="form-group"><label>Рост (см)</label><input type="number" id="profileHeight" value="${h}" placeholder="см"></div>
+        <div id="profileBMI" class="profile-calc"></div>
+        <div id="profileBJU" class="profile-calc"></div>
+        <div class="form-group"><label>Процент жира (%)</label><input type="number" id="profileBodyFat" step="0.1" value="${bf}" placeholder="%"></div>
+        <div id="profileLeanMass" class="profile-calc"></div>
+        <div class="form-group"><label>Цели (mainGoals)</label><textarea id="profileGoals" rows="3">${p.mainGoals || p.main_goals || ''}</textarea></div>
+        <div class="form-group"><label>Дата старта (startDate)</label><input type="date" id="profileStartDate" value="${p.startDate || p.start_date || ''}"></div>
+        <div class="form-group"><label>Текущий блок</label><select id="profileBlock">${blockOptions}</select></div>
+        <div id="profileBlockTasks" style="margin-top:12px;"></div>
+        <div class="form-actions"><button class="btn btn-primary" onclick="saveProfile()">Сохранить профиль</button></div>
+      `;
+      }
+      function updateProfileCalcs() {
+        const w = parseFloat(document.getElementById('profileWeight')?.value) || 0;
+        const h = parseFloat(document.getElementById('profileHeight')?.value) || 0;
+        const bf = parseFloat(document.getElementById('profileBodyFat')?.value) || 0;
+        const bmiEl = document.getElementById('profileBMI');
+        const bjuEl = document.getElementById('profileBJU');
+        const leanEl = document.getElementById('profileLeanMass');
+        if (bmiEl) bmiEl.textContent = w && h ? 'ИМТ: ' + (w / (h / 100) ** 2).toFixed(1) : '';
+        if (leanEl)
+          leanEl.textContent =
+            w && bf >= 0 ? 'Сухая масса: ' + (w * (1 - bf / 100)).toFixed(1) + ' кг' : '';
+        if (bjuEl && w && h) {
+          const bmr = 10 * w + 6.25 * h - 5 * 30 + 5;
+          const kcal = Math.round(bmr * 1.2);
+          const protein = Math.round(w * 2);
+          const fat = Math.round((kcal * 0.3) / 9);
+          const carb = Math.round((kcal - protein * 4 - fat * 9) / 4);
+          bjuEl.textContent =
+            'КБЖУ (ориентир): ' +
+            kcal +
+            ' ккал · Б ' +
+            protein +
+            ' г · Ж ' +
+            fat +
+            ' г · У ' +
+            carb +
+            ' г';
+        }
+      }
+      function renderProfileBlockTasks() {
+        const activeBlockId = document.getElementById('profileBlock')?.value || '';
+        const allTasks = cabinetData.mandatoryTasks || [];
+        const tasks = activeBlockId
+          ? allTasks.filter((t) => !t.block_id || t.block_id === activeBlockId)
+          : allTasks;
+        const el = document.getElementById('profileBlockTasks');
+        if (!el) return;
+        const blockOpts = (cabinetData.blocks || [])
+          .map((b) => `<option value="${b.id}">${(b.name || '').replace(/</g, '&lt;')}</option>`)
+          .join('');
+        if (!tasks.length) {
+          el.innerHTML = activeBlockId
+            ? '<p class="profile-calc">Нет обязательных задач на этот блок. Задачи без привязки к блоку отображаются для любого блока.</p>'
+            : '<p class="profile-calc">Нет обязательных задач. Они настраиваются в трекере (макс. 3 на клиента).</p>';
+          return;
+        }
+        const rows = tasks
+          .map((t) => {
+            const nameVal = (t.name || '').replace(/"/g, '&quot;');
+            const catVal = (t.category || '').replace(/"/g, '&quot;');
+            return `
+        <div class="form-group" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:8px;">
+          <input type="text" class="task-name-input" data-task-id="${t.id}" value="${nameVal}" placeholder="Название задачи" style="flex:1;min-width:180px;padding:8px;">
+          <input type="text" class="task-category-input" data-task-id="${t.id}" value="${catVal}" placeholder="Категория" style="width:120px;padding:8px;">
+          <select class="task-block-input" data-task-id="${t.id}" style="padding:8px;">
+            <option value="">Общая</option>${blockOpts}
+          </select>
+          <button type="button" class="btn-sm primary save-task-btn" data-task-id="${t.id}">Сохранить</button>
+        </div>
+      `;
+          })
+          .join('');
+        el.innerHTML =
+          '<strong>Обязательные задачи блока (редактируемые):</strong><div style="margin-top:8px;">' +
+          rows +
+          '</div>';
+        document.querySelectorAll('.task-block-input').forEach((sel) => {
+          const task = cabinetData.mandatoryTasks.find((t) => t.id === sel.dataset.taskId);
+          if (task?.block_id) sel.value = task.block_id;
+        });
+        document.querySelectorAll('.save-task-btn').forEach((btn) => {
+          btn.addEventListener('click', () => saveMandatoryTask(btn.dataset.taskId));
+        });
+      }
+      async function saveMandatoryTask(taskId) {
+        const row = document
+          .querySelector(`.task-name-input[data-task-id="${taskId}"]`)
+          ?.closest('.form-group');
+        if (!row) return;
+        const name = row.querySelector('.task-name-input')?.value?.trim();
+        const category = row.querySelector('.task-category-input')?.value?.trim() || null;
+        const blockId = row.querySelector('.task-block-input')?.value || null;
+        const { error } = await supabaseClient
+          .from('mandatory_tasks')
+          .update({ name: name || '', category, block_id: blockId || null })
+          .eq('id', taskId)
+          .eq('client_id', selectedClientId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        renderCabinet();
+        bindProfileSection();
+      }
+
+      async function saveProfile() {
+        const name = document.getElementById('profileName').value.trim();
+        const email = document.getElementById('profileEmail').value.trim();
+        const status = document.getElementById('profileStatus').value;
+        const weight = document.getElementById('profileWeight').value;
+        const height = document.getElementById('profileHeight').value;
+        const bodyFat = document.getElementById('profileBodyFat').value;
+        const mainGoals = document.getElementById('profileGoals').value.trim();
+        const startDate = document.getElementById('profileStartDate').value || null;
+        const activeBlockId = document.getElementById('profileBlock')?.value || null;
+        const profile = {
+          ...(cabinetData.client?.profile || {}),
+          mainGoals: mainGoals || undefined,
+          startDate: startDate || undefined,
+          weight: weight ? parseFloat(weight) : undefined,
+          height: height ? parseFloat(height) : undefined,
+          body_fat: bodyFat ? parseFloat(bodyFat) : undefined,
+          active_block_id: activeBlockId || undefined,
+        };
+        const { error } = await supabaseClient
+          .from('clients')
+          .update({ name, email: email || null, status, profile })
+          .eq('id', selectedClientId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        renderCabinet();
+      }
+
+      function renderBlocksSection() {
+        const blocks = cabinetData.blocks;
+        if (!blocks.length)
+          return '<h2>Блоки и программа</h2><div class="empty-state">Нет блоков</div>';
+        const rows = blocks
+          .map((b) => {
+            const nameAttr = (b.name || '').replace(/"/g, '&quot;');
+            return `
+        <tr data-block-id="${b.id}">
+          <td><input type="text" class="block-name-input" data-block-id="${b.id}" value="${nameAttr}" style="width:100%;max-width:200px;padding:6px;"></td>
+          <td>${b.total_sessions ?? '—'}</td>
+          <td>${b.usedSessions ?? 0}</td>
+          <td>${(b.start_date || '').slice(0, 10)}</td>
+          <td><input type="date" class="block-end-input" data-block-id="${b.id}" value="${(b.end_date || '').slice(0, 10)}" style="padding:6px;"></td>
+          <td><input type="number" class="block-cost-input" data-block-id="${b.id}" value="${b.cost ?? ''}" placeholder="—" step="0.01" style="width:80px;padding:6px;"></td>
+          <td>${b.status || '—'}</td>
+          <td><button class="btn-sm primary save-block-btn" data-block-id="${b.id}">Сохранить</button></td>
+        </tr>
+      `;
+          })
+          .join('');
+        return `<h2>Блоки и программа</h2><table class="data-table"><thead><tr><th>Блок</th><th>Всего сессий</th><th>Выполнено</th><th>Дата старта</th><th>Дата окончания</th><th>Стоимость</th><th>Статус</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      async function saveBlock(blockId) {
+        const row = document.querySelector(`tr[data-block-id="${blockId}"]`);
+        if (!row) return;
+        const name = row.querySelector('.block-name-input')?.value?.trim();
+        const endDate = row.querySelector('.block-end-input')?.value || null;
+        const costRaw = row.querySelector('.block-cost-input')?.value;
+        const cost = costRaw === '' || costRaw === null ? null : parseFloat(costRaw);
+        const { error } = await supabaseClient
+          .from('training_blocks')
+          .update({ name: name || null, end_date: endDate || null, cost })
+          .eq('id', blockId);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+          return;
+        }
+        await loadCabinetData();
+        renderCabinet();
+      }
+
+      function renderLoadSection(filtered) {
+        const sessionIds = filtered.map((s) => s.id);
+        const allSets = [];
+        sessionIds.forEach((sid) => {
+          (cabinetData.setsBySession[sid] || []).forEach((st) => allSets.push(st));
+        });
+        if (!allSets.length)
+          return '<h2>Нагрузка по мышцам</h2><div class="empty-state">Нет подходов за период</div>';
+        const byEx = {};
+        allSets.forEach((st) => {
+          const name =
+            (cabinetData.exerciseIdToName && cabinetData.exerciseIdToName[st.exercise_id]) ||
+            (st.exercise_name && st.exercise_name.trim()) ||
+            'Без названия';
+          if (!byEx[name]) byEx[name] = { sets: 0, volume: 0 };
+          byEx[name].sets += 1;
+          byEx[name].volume += (Number(st.weight) || 0) * (Number(st.reps) || 0);
+        });
+        const rows = Object.entries(byEx)
+          .map(
+            ([name, v]) =>
+              `<tr><td>${name}</td><td>${v.sets}</td><td>${Math.round(v.volume)}</td></tr>`
+          )
+          .join('');
+        return `<h2>Нагрузка по мышцам (период: ${currentPeriod})</h2><p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">По выбранному периоду — подходы и тоннаж по упражнениям.</p><table class="data-table"><thead><tr><th>Упражнение</th><th>Подходов</th><th>Тоннаж (кг)</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      async function handleLogout() {
+        await supabaseClient.auth.signOut();
+        window.location.href = '../login.html';
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          if (typeof window.supabase === 'undefined' || !window.SUPABASE_URL) {
+            document.getElementById('app').innerHTML =
+              '<div class="cabinet-wrap"><p style="color:var(--danger);">Не загружен конфиг Supabase. Проверьте путь к ../js/supabase-config.js</p><p><a href="../login.html">На страницу входа</a></p></div>';
+            return;
+          }
+          supabaseClient = window.supabase.createClient(
+            window.SUPABASE_URL,
+            window.SUPABASE_ANON_KEY
+          );
+          if (!(await requireAuth())) return;
+          clientsList = await loadClients();
+          selectedClientId = localStorage.getItem('cabinet_client_id');
+          if (selectedClientId && clientsList.some((c) => c.id === selectedClientId)) {
+            await loadCabinetData();
+            renderCabinet();
+            document
+              .querySelectorAll('.cabinet-section')
+              .forEach((s) => s.classList.remove('active'));
+            document.getElementById('section-profile').classList.add('active');
+          } else {
+            selectedClientId = null;
+            showClientPicker();
+          }
+        } catch (e) {
+          console.error(e);
+          document.getElementById('app').innerHTML =
+            '<div class="cabinet-wrap"><p style="color:var(--danger);">Ошибка: ' +
+            (e.message || e) +
+            '</p><p><a href="index.html">Обновить</a> · <a href="../login.html">Вход</a></p></div>';
+        }
+      });
+    </script>
+  </body>
+</html>
