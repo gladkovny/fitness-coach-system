@@ -2,6 +2,10 @@
  * Миграция данных из Google Sheets в Supabase прямо из GAS.
  * Не требует Google Cloud Console и номера телефона.
  *
+ * Профиль клиента (рост, вес, противопоказания, ограничения, цели): читается из
+ * ClientProfile и Goals при миграции — migrateProfileFromClientProfile().
+ * Рост (height) берётся из анкеты Google Form при онбординге (ONBOARDING_V2).
+ *
  * Важно: этот файл должен быть в одном проекте с Master API_assessment.gs
  * (используются findColumns и formatDate оттуда).
  *
@@ -46,6 +50,22 @@ function supabasePost(table, payload) {
   return Array.isArray(json) ? json[0] : json;
 }
 
+function supabasePatch(table, id, payload) {
+  var { url, key } = getSupabaseConfig();
+  var res = UrlFetchApp.fetch(url + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), {
+    method: 'patch',
+    contentType: 'application/json',
+    headers: {
+      'apikey': key,
+      'Authorization': 'Bearer ' + key,
+      'Prefer': 'return=minimal'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  if (res.getResponseCode() >= 400) throw new Error(table + ' PATCH: ' + res.getContentText());
+}
+
 function supabasePostMany(table, rows) {
   if (rows.length === 0) return [];
   const { url, key } = getSupabaseConfig();
@@ -66,7 +86,8 @@ function supabasePostMany(table, rows) {
 
 /**
  * Запуск миграции. Без аргументов — полный перенос.
- * С аргументом: 'trainers' | 'exercises' | 'client:ID' для пошагового запуска.
+ * С аргументом: 'trainers' | 'exercises' | 'clients' | 'profile' | 'client:ID'
+ *   'profile' — только обновить profile (рост, вес, цели) из ClientProfile/Form/Goals.
  */
 function migrateToSupabase(step) {
   const masterSS = SpreadsheetApp.getActiveSpreadsheet();
@@ -165,6 +186,31 @@ function migrateToSupabase(step) {
     if (step === 'clients') return;
   }
 
+  if (step === 'profile') {
+    var trainerId = getFirstTrainerId();
+    var { clients } = getClients();
+    var updated = 0;
+    for (var c = 0; c < clients.length; c++) {
+      var client = clients[c];
+      if (!client.spreadsheetId) continue;
+      var clientUuid = getClientUuidByOldId(client.id);
+      if (!clientUuid) continue;
+      try {
+        var ss = SpreadsheetApp.openById(client.spreadsheetId);
+        var profile = migrateProfileFromClientProfile(ss);
+        if (Object.keys(profile).length > 0) {
+          supabasePatch('clients', clientUuid, { profile: profile });
+          updated++;
+          Logger.log('Profile: ' + client.id + ' (height: ' + (profile.height || '-') + ')');
+        }
+      } catch (e) {
+        Logger.log('Profile error ' + client.id + ': ' + e.message);
+      }
+    }
+    Logger.log('Профили обновлены: ' + updated);
+    return;
+  }
+
   if (!step || step === 'exercises') {
     var exSheet = masterSS.getSheetByName('exercises_master');
     if (exSheet) {
@@ -204,6 +250,10 @@ function migrateToSupabase(step) {
     if (!clientUuid) continue;
     try {
       var ss = SpreadsheetApp.openById(client.spreadsheetId);
+      var profile = migrateProfileFromClientProfile(ss);
+      if (Object.keys(profile).length > 0) {
+        supabasePatch('clients', clientUuid, { profile: profile });
+      }
       var prog = supabasePost('programs', { trainer_id: trainerId, client_id: clientUuid, name: 'Program ' + client.id, type: 'online', status: 'active' });
       var programId = prog.id;
       var blockIdMap = {};
@@ -321,4 +371,67 @@ function getClientUuidByOldId(oldId) {
     return map[String(oldId)] || null;
   }
   return null;
+}
+
+/**
+ * Читает лист ClientProfile (key/value), Form (fallback), Goals — формирует profile JSONB для Supabase.
+ * Рост (height) из анкеты Google Form записывается в ClientProfile при онбординге.
+ */
+function migrateProfileFromClientProfile(ss) {
+  var profile = {};
+  function setHeight(val) {
+    var num = parseFloat(String(val).replace(',', '.'));
+    if (!isNaN(num) && num > 0) profile.height = num;
+  }
+  function setWeight(val) {
+    var num = parseFloat(String(val).replace(',', '.'));
+    if (!isNaN(num) && num > 0) profile.weight = num;
+  }
+  var cpSheet = ss.getSheetByName('ClientProfile');
+  if (cpSheet) {
+    var data = cpSheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var key = String(data[i][0] || '').toLowerCase().trim();
+      var value = data[i][1];
+      if (!key) continue;
+      if (key === 'height') setHeight(value);
+      else if (key === 'weight') setWeight(value);
+      else if (key === 'body_fat') {
+        var num = parseFloat(String(value).replace(',', '.'));
+        if (!isNaN(num)) profile.body_fat = num;
+      } else if (key === 'health_injuries' || key === 'health_chronic' || key === 'health_medications') {
+        if (value) profile.contraindications = (profile.contraindications || '') + (profile.contraindications ? '\n' : '') + value;
+      } else if (key === 'health_restrictions') {
+        if (value) profile.limitations = value;
+      }
+    }
+  }
+  if (!profile.height) {
+    var formSheet = ss.getSheetByName('Form');
+    if (formSheet) {
+      var fData = formSheet.getDataRange().getValues();
+      for (var fi = 1; fi < fData.length; fi++) {
+        var fk = String(fData[fi][0] || '').toLowerCase().trim();
+        if (fk === 'height') { setHeight(fData[fi][1]); break; }
+      }
+    }
+  }
+  var goalsSheet = ss.getSheetByName('Goals');
+  if (goalsSheet) {
+    var gData = goalsSheet.getDataRange().getValues();
+    for (var j = 1; j < gData.length; j++) {
+      var k = String(gData[j][0] || '').toLowerCase().trim();
+      var v = gData[j][1];
+      if (k === 'height' && v && !profile.height) setHeight(v);
+      else if (k === 'main_goals' || k === 'main_goal' || k === 'main_goal_custom') {
+        if (v) profile.mainGoals = (profile.mainGoals ? profile.mainGoals + ' ' : '') + v;
+      } else if (k === 'start_date' && v) {
+        profile.startDate = formatDate(v);
+      } else if (k === 'start_weight' && v) {
+        var w = parseFloat(String(v).replace(',', '.'));
+        if (!isNaN(w)) profile.startWeight = w;
+      }
+    }
+  }
+  return profile;
 }

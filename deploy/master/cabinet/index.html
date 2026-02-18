@@ -241,6 +241,7 @@
         exercises: [],
       };
       let currentPeriod = 'all';
+      let loadPeriod = 'all';
       let selectedSessionId = null;
 
       async function requireAuth() {
@@ -339,7 +340,10 @@
           blocks = blocksData || [];
         }
         const [{ data: exercises }, { data: mandatoryTasks }] = await Promise.all([
-          supabaseClient.from('exercises').select('id, name, category').limit(500),
+          supabaseClient
+            .from('exercises')
+            .select('id, name, category, muscle_coefficients, bodyweight_ratio')
+            .limit(500),
           supabaseClient
             .from('mandatory_tasks')
             .select('id, name, category, block_id')
@@ -427,22 +431,38 @@
         return sessions;
       }
 
+      function filterSessionsForLoad() {
+        const { sessions } = cabinetData;
+        const activeBlock =
+          cabinetData.blocks.find((b) => b.status === 'active') || cabinetData.blocks[0];
+        const cutoff3m = new Date();
+        cutoff3m.setDate(cutoff3m.getDate() - 90);
+        const cutoffStr = cutoff3m.toISOString().slice(0, 10);
+        const now = new Date();
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekStr = weekAgo.toISOString().slice(0, 10);
+        if (loadPeriod === 'week') return sessions.filter((s) => (s.date || '') >= weekStr);
+        if (loadPeriod === 'block' && activeBlock)
+          return sessions.filter((s) => s.block_id === activeBlock.id);
+        if (loadPeriod === '3m') return sessions.filter((s) => (s.date || '') >= cutoffStr);
+        return sessions;
+      }
+
       function renderCabinet() {
         const client = cabinetData.client;
         const filtered = filterSessions();
         const nav = `
         <div class="cabinet-nav">
           <button class="nav-tab active" data-tab="profile">Профиль</button>
-          <button class="nav-tab" data-tab="sessions">Сессии</button>
-          <button class="nav-tab" data-tab="blocks">Блоки</button>
+          <button class="nav-tab" data-tab="sessions-blocks">Сессии и блоки</button>
           <button class="nav-tab" data-tab="load">Нагрузка</button>
         </div>
       `;
         const sections = `
         <div id="section-profile" class="cabinet-section active">${renderProfileSection()}</div>
-        <div id="section-sessions" class="cabinet-section">${renderSessionsSection(filtered)}</div>
-        <div id="section-blocks" class="cabinet-section">${renderBlocksSection()}</div>
-        <div id="section-load" class="cabinet-section">${renderLoadSection(filtered)}</div>
+        <div id="section-sessions-blocks" class="cabinet-section">${renderSessionsBlocksSection(filtered)}</div>
+        <div id="section-load" class="cabinet-section">${renderLoadSection()}</div>
       `;
         document.getElementById('app').innerHTML = `
         <header class="header">
@@ -469,6 +489,7 @@
         bindSessionRowClicks();
         bindProfileSection();
         bindBlocksSection();
+        bindSessionsBlocksSection();
       }
       function bindBlocksSection() {
         document.querySelectorAll('.save-block-btn').forEach((btn) => {
@@ -477,15 +498,108 @@
       }
       function bindProfileSection() {
         updateProfileCalcs();
-        renderProfileBlockTasks();
-        const blockSel = document.getElementById('profileBlock');
-        if (blockSel) blockSel.addEventListener('change', renderProfileBlockTasks);
         ['profileWeight', 'profileHeight', 'profileBodyFat'].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.addEventListener('input', updateProfileCalcs);
         });
       }
 
+      function renderSessionsBlocksSection(filtered) {
+        const blocksHtml = renderBlocksSection();
+        const sessionsHtml = renderSessionsSection(filtered);
+        const activeBlockId =
+          cabinetData.client?.profile?.active_block_id ||
+          cabinetData.blocks.find((b) => b.status === 'active')?.id ||
+          cabinetData.blocks[0]?.id ||
+          '';
+        const blockFilterOptions =
+          '<option value="">— все блоки —</option>' +
+          (cabinetData.blocks || [])
+            .map(
+              (b) =>
+                `<option value="${b.id}" ${b.id === activeBlockId ? 'selected' : ''}>${(b.name || '').replace(/</g, '&lt;')}</option>`
+            )
+            .join('');
+        const allTasks = cabinetData.mandatoryTasks || [];
+        const tasks = activeBlockId
+          ? allTasks.filter((t) => !t.block_id || t.block_id === activeBlockId)
+          : allTasks;
+        const blockOpts =
+          '<option value="">Общая</option>' +
+          (cabinetData.blocks || [])
+            .map((b) => `<option value="${b.id}">${(b.name || '').replace(/</g, '&lt;')}</option>`)
+            .join('');
+        const tasksRows =
+          tasks.length > 0
+            ? tasks
+                .map((t) => {
+                  const nameVal = (t.name || '').replace(/"/g, '&quot;');
+                  const catVal = (t.category || '').replace(/"/g, '&quot;');
+                  return `
+        <div class="form-group" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:8px;">
+          <input type="text" class="task-name-input" data-task-id="${t.id}" value="${nameVal}" placeholder="Название задачи" style="flex:1;min-width:180px;padding:8px;">
+          <input type="text" class="task-category-input" data-task-id="${t.id}" value="${catVal}" placeholder="Категория" style="width:120px;padding:8px;">
+          <select class="task-block-input" data-task-id="${t.id}" style="padding:8px;">
+            <option value="">Общая</option>${blockOpts}
+          </select>
+          <button type="button" class="btn-sm primary save-task-btn" data-task-id="${t.id}">Сохранить</button>
+        </div>`;
+                })
+                .join('')
+            : activeBlockId
+              ? '<p class="profile-calc">Нет обязательных задач на этот блок. Задачи без привязки к блоку отображаются для любого блока.</p>'
+              : '<p class="profile-calc">Нет обязательных задач. Они настраиваются в трекере (макс. 3 на клиента).</p>';
+        const tasksHtml = `
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+          <h3 style="font-size:16px;margin-bottom:12px;">Обязательные задачи блока</h3>
+          <div class="filter-row" style="margin-bottom:12px;">
+            <label>Блок для задач:</label>
+            <select id="blockSelectTasks">${blockFilterOptions}</select>
+          </div>
+          <div id="blockTasksList">${tasksRows}</div>
+        </div>`;
+        return (
+          '<div class="sessions-blocks-wrap">' +
+          '<h2>Блоки</h2>' +
+          blocksHtml.replace(/<h2>Блоки и программа<\/h2>/, '') +
+          '<h2 style="margin-top:24px;">Сессии</h2>' +
+          sessionsHtml +
+          tasksHtml +
+          '</div>'
+        );
+      }
+      function bindSessionsBlocksSection() {
+        const blockSel = document.getElementById('blockSelectTasks');
+        if (blockSel) {
+          blockSel.addEventListener('change', () => {
+            const activeBlockId = blockSel.value || null;
+            const prev = cabinetData.client?.profile || {};
+            const profile = { ...prev };
+            if (activeBlockId) profile.active_block_id = activeBlockId;
+            else delete profile.active_block_id;
+            supabaseClient
+              .from('clients')
+              .update({ profile })
+              .eq('id', selectedClientId)
+              .then(() => {
+                cabinetData.client = { ...cabinetData.client, profile };
+                const filtered = filterSessions();
+                document.getElementById('section-sessions-blocks').innerHTML =
+                  renderSessionsBlocksSection(filtered);
+                bindSessionRowClicks();
+                bindBlocksSection();
+                bindSessionsBlocksSection();
+              });
+          });
+        }
+        document.querySelectorAll('.task-block-input').forEach((sel) => {
+          const task = cabinetData.mandatoryTasks?.find((t) => t.id === sel.dataset.taskId);
+          if (task?.block_id) sel.value = task.block_id;
+        });
+        document.querySelectorAll('.save-task-btn').forEach((btn) => {
+          btn.addEventListener('click', () => saveMandatoryTask(btn.dataset.taskId));
+        });
+      }
       function renderSessionsSection(filtered) {
         const periodSelect = `
         <div class="filter-row">
@@ -499,17 +613,22 @@
       `;
         if (!filtered.length)
           return periodSelect + '<div class="empty-state">Нет сессий за выбранный период</div>';
+        const blockById = {};
+        (cabinetData.blocks || []).forEach((b) => {
+          blockById[b.id] = b.name;
+        });
         const rows = filtered
-          .map(
-            (s) => `
+          .map((s) => {
+            const blockName = s.block_id ? blockById[s.block_id] || '—' : '—';
+            return `
         <tr class="clickable" data-session-id="${s.id}">
           <td>${(s.date || '').slice(0, 10)}</td>
           <td>${s.type || '—'}</td>
           <td>${s.total_tonnage != null ? Number(s.total_tonnage) : '—'}</td>
-          <td>${s.block_id ? 'да' : '—'}</td>
+          <td>${blockName}</td>
         </tr>
-      `
-          )
+      `;
+          })
           .join('');
         return (
           periodSelect +
@@ -530,11 +649,32 @@
             await loadCabinetData();
             renderCabinet();
           });
-        document.querySelectorAll('#section-sessions tr.clickable').forEach((tr) => {
+        document.querySelectorAll('#section-sessions-blocks tr.clickable').forEach((tr) => {
           tr.addEventListener('click', () => openSessionDetail(tr.dataset.sessionId));
         });
       }
 
+      function formatWeight(v) {
+        if (v == null || v === '' || Number.isNaN(Number(v))) return '—';
+        const n = Number(v);
+        if (n === 0) return '0';
+        const rounded = Math.round(n * 10) / 10;
+        return rounded % 1 === 0 ? String(Math.round(rounded)) : String(rounded);
+      }
+      function isBodyweightBySetAndEx(set, ex) {
+        if (ex?.bodyweight_ratio != null && Number(ex.bodyweight_ratio) > 0) return true;
+        const name = (ex?.name || set?.exercise_name || '').trim().toLowerCase();
+        return BODYWEIGHT_NAME_RATIO.some((r) => r.keys.some((k) => name.includes(k)));
+      }
+      /** Для ячейки «Вес» в подходах: для bodyweight показываем текущий эквивалент из профиля и «(экв.)» */
+      function formatWeightForSet(st, ex) {
+        const e = ex ?? getExerciseForSet(st);
+        if (isBodyweightBySetAndEx(st, e)) {
+          const eff = getEffectiveWeightForSet(st, e);
+          return (eff > 0 ? formatWeight(eff) : '—') + (eff > 0 ? ' (экв.)' : '');
+        }
+        return formatWeight(st?.weight);
+      }
       function getExerciseName(st) {
         return (
           cabinetData.exerciseIdToName?.[st.exercise_id] ||
@@ -546,9 +686,12 @@
         const byEx = {};
         sets.forEach((st) => {
           const name = getExerciseName(st);
+          const ex = getExerciseForSet(st);
+          const effW = getEffectiveWeightForSet(st, ex);
+          const reps = Number(st.reps) || 0;
           if (!byEx[name]) byEx[name] = { sets: 0, volume: 0 };
           byEx[name].sets += 1;
-          byEx[name].volume += (Number(st.weight) || 0) * (Number(st.reps) || 0);
+          byEx[name].volume += effW * reps;
         });
         return byEx;
       }
@@ -568,12 +711,13 @@
         const setRows = sets
           .map((st) => {
             const dispName = getExerciseName(st);
+            const ex = getExerciseForSet(st);
             return `
         <tr data-set-id="${st.id}">
           <td class="editable-cell" data-field="exercise_name" data-set-id="${st.id}">${dispName}</td>
           <td>${st.set_number}</td>
           <td class="editable-cell" data-field="reps" data-set-id="${st.id}">${st.reps ?? '—'}</td>
-          <td class="editable-cell" data-field="weight" data-set-id="${st.id}">${st.weight ?? '—'}</td>
+          <td class="editable-cell" data-field="weight" data-set-id="${st.id}">${formatWeightForSet(st, ex)}</td>
           <td>${st.rpe ?? '—'}</td>
           <td><button class="btn-sm danger delete-set">Удалить</button></td>
         </tr>
@@ -594,6 +738,7 @@
           <h4 style="margin:20px 0 10px;">Распределение нагрузки по упражнениям</h4>
           <table class="data-table"><thead><tr><th>Упражнение</th><th>Подходов</th><th>Тоннаж (кг)</th></tr></thead><tbody>${loadRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody></table>
           <h4 style="margin:20px 0 10px;">Подходы (нажмите на название, вес или повторения для редактирования)</h4>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">Если вес не указан (—), нажмите на ячейку и введите значение, затем сохраните.</p>
           <table class="data-table"><thead><tr><th>Упражнение</th><th>№</th><th>Повторения</th><th>Вес</th><th>RPE</th><th></th></tr></thead><tbody>${setRows}</tbody></table>
         </div>
       `;
@@ -617,16 +762,21 @@
             const setId = this.dataset.setId;
             const field = this.dataset.field;
             const current = this.textContent.trim();
+            const promptDefault =
+              field === 'weight' ? current.replace(/\s*\(экв\.\)\s*$/i, '').trim() : current;
             const newVal = prompt(
               field === 'exercise_name' ? 'Упражнение' : field === 'weight' ? 'Вес' : 'Повторения',
-              current
+              promptDefault
             );
             if (newVal === null) return;
             const payload = {};
             if (field === 'exercise_name') payload.exercise_name = newVal.trim() || null;
             else if (field === 'reps') payload.reps = newVal === '' ? null : parseInt(newVal, 10);
-            else if (field === 'weight')
-              payload.weight = newVal === '' ? null : parseFloat(newVal.replace(',', '.'));
+            else if (field === 'weight') {
+              const parsed = newVal === '' ? null : parseFloat(newVal.replace(',', '.'));
+              payload.weight =
+                parsed != null && !Number.isNaN(parsed) ? Math.round(parsed * 10) / 10 : null;
+            }
             if (Object.keys(payload).length) updateSet(setId, payload);
           });
         });
@@ -716,33 +866,28 @@
           ) || '';
         const h = Number(p.height ?? p.height_cm ?? '') || '';
         const bf = Number(p.body_fat ?? p.bodyFat ?? '') || '';
-        const activeBlockId = p.active_block_id || p.activeBlockId || '';
-        const tasksForBlock = (cabinetData.mandatoryTasks || []).filter(
-          (t) => !t.block_id || t.block_id === activeBlockId
-        );
-        const blockOptions =
-          '<option value="">— не выбран —</option>' +
-          cabinetData.blocks
-            .map(
-              (b) =>
-                `<option value="${b.id}" ${b.id === activeBlockId ? 'selected' : ''}>${(b.name || '').replace(/</g, '&lt;')}</option>`
-            )
-            .join('');
+        const contraindications =
+          p.contraindications ??
+          ([p.health?.injuries, p.health?.chronic, p.health?.medications]
+            .filter(Boolean)
+            .join('\n') ||
+            '');
+        const limitations = p.limitations ?? p.health?.restrictions ?? '';
         return `
         <h2>Профиль клиента</h2>
-        <div class="form-group"><label>Имя</label><input type="text" id="profileName" value="${c?.name || ''}"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="profileEmail" value="${c?.email || ''}"></div>
+        <div class="form-group"><label>Имя</label><input type="text" id="profileName" value="${(c?.name || '').replace(/"/g, '&quot;')}"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="profileEmail" value="${(c?.email || '').replace(/"/g, '&quot;')}"></div>
         <div class="form-group"><label>Статус</label><select id="profileStatus"><option value="lead" ${c?.status === 'lead' ? 'selected' : ''}>lead</option><option value="onboarding" ${c?.status === 'onboarding' ? 'selected' : ''}>onboarding</option><option value="active" ${c?.status === 'active' ? 'selected' : ''}>active</option><option value="paused" ${c?.status === 'paused' ? 'selected' : ''}>paused</option><option value="churned" ${c?.status === 'churned' ? 'selected' : ''}>churned</option></select></div>
         <div class="form-group"><label>Вес (кг)</label><input type="number" id="profileWeight" step="0.1" value="${w}" placeholder="кг"></div>
-        <div class="form-group"><label>Рост (см)</label><input type="number" id="profileHeight" value="${h}" placeholder="см"></div>
+        <div class="form-group"><label>Рост (см)</label><input type="number" id="profileHeight" value="${h}" placeholder="см" title="Подтягивается из анкеты Google Form при онбординге"></div>
         <div id="profileBMI" class="profile-calc"></div>
         <div id="profileBJU" class="profile-calc"></div>
         <div class="form-group"><label>Процент жира (%)</label><input type="number" id="profileBodyFat" step="0.1" value="${bf}" placeholder="%"></div>
         <div id="profileLeanMass" class="profile-calc"></div>
-        <div class="form-group"><label>Цели (mainGoals)</label><textarea id="profileGoals" rows="3">${p.mainGoals || p.main_goals || ''}</textarea></div>
+        <div class="form-group"><label>Цели (mainGoals)</label><textarea id="profileGoals" rows="3" placeholder="Цели клиента из анкеты или вручную">${(p.mainGoals || p.main_goals || '').replace(/</g, '&lt;')}</textarea></div>
+        <div class="form-group"><label>Противопоказания</label><textarea id="profileContraindications" rows="2" placeholder="Травмы, хронические заболевания, медикаменты (из анкеты или вручную)">${(contraindications || '').replace(/</g, '&lt;')}</textarea></div>
+        <div class="form-group"><label>Ограничения</label><textarea id="profileLimitations" rows="2" placeholder="Ограничения по нагрузке (из анкеты или вручную)">${(limitations || '').replace(/</g, '&lt;')}</textarea></div>
         <div class="form-group"><label>Дата старта (startDate)</label><input type="date" id="profileStartDate" value="${p.startDate || p.start_date || ''}"></div>
-        <div class="form-group"><label>Текущий блок</label><select id="profileBlock">${blockOptions}</select></div>
-        <div id="profileBlockTasks" style="margin-top:12px;"></div>
         <div class="form-actions"><button class="btn btn-primary" onclick="saveProfile()">Сохранить профиль</button></div>
       `;
       }
@@ -775,51 +920,6 @@
             ' г';
         }
       }
-      function renderProfileBlockTasks() {
-        const activeBlockId = document.getElementById('profileBlock')?.value || '';
-        const allTasks = cabinetData.mandatoryTasks || [];
-        const tasks = activeBlockId
-          ? allTasks.filter((t) => !t.block_id || t.block_id === activeBlockId)
-          : allTasks;
-        const el = document.getElementById('profileBlockTasks');
-        if (!el) return;
-        const blockOpts = (cabinetData.blocks || [])
-          .map((b) => `<option value="${b.id}">${(b.name || '').replace(/</g, '&lt;')}</option>`)
-          .join('');
-        if (!tasks.length) {
-          el.innerHTML = activeBlockId
-            ? '<p class="profile-calc">Нет обязательных задач на этот блок. Задачи без привязки к блоку отображаются для любого блока.</p>'
-            : '<p class="profile-calc">Нет обязательных задач. Они настраиваются в трекере (макс. 3 на клиента).</p>';
-          return;
-        }
-        const rows = tasks
-          .map((t) => {
-            const nameVal = (t.name || '').replace(/"/g, '&quot;');
-            const catVal = (t.category || '').replace(/"/g, '&quot;');
-            return `
-        <div class="form-group" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;background:var(--bg);border-radius:8px;margin-bottom:8px;">
-          <input type="text" class="task-name-input" data-task-id="${t.id}" value="${nameVal}" placeholder="Название задачи" style="flex:1;min-width:180px;padding:8px;">
-          <input type="text" class="task-category-input" data-task-id="${t.id}" value="${catVal}" placeholder="Категория" style="width:120px;padding:8px;">
-          <select class="task-block-input" data-task-id="${t.id}" style="padding:8px;">
-            <option value="">Общая</option>${blockOpts}
-          </select>
-          <button type="button" class="btn-sm primary save-task-btn" data-task-id="${t.id}">Сохранить</button>
-        </div>
-      `;
-          })
-          .join('');
-        el.innerHTML =
-          '<strong>Обязательные задачи блока (редактируемые):</strong><div style="margin-top:8px;">' +
-          rows +
-          '</div>';
-        document.querySelectorAll('.task-block-input').forEach((sel) => {
-          const task = cabinetData.mandatoryTasks.find((t) => t.id === sel.dataset.taskId);
-          if (task?.block_id) sel.value = task.block_id;
-        });
-        document.querySelectorAll('.save-task-btn').forEach((btn) => {
-          btn.addEventListener('click', () => saveMandatoryTask(btn.dataset.taskId));
-        });
-      }
       async function saveMandatoryTask(taskId) {
         const row = document
           .querySelector(`.task-name-input[data-task-id="${taskId}"]`)
@@ -839,38 +939,62 @@
         }
         await loadCabinetData();
         renderCabinet();
-        bindProfileSection();
       }
 
       async function saveProfile() {
         const name = document.getElementById('profileName').value.trim();
         const email = document.getElementById('profileEmail').value.trim();
         const status = document.getElementById('profileStatus').value;
-        const weight = document.getElementById('profileWeight').value;
-        const height = document.getElementById('profileHeight').value;
-        const bodyFat = document.getElementById('profileBodyFat').value;
+        const weightRaw = document.getElementById('profileWeight').value;
+        const heightRaw = document.getElementById('profileHeight').value;
+        const bodyFatRaw = document.getElementById('profileBodyFat').value;
         const mainGoals = document.getElementById('profileGoals').value.trim();
+        const contraindications =
+          document.getElementById('profileContraindications')?.value.trim() || '';
+        const limitations = document.getElementById('profileLimitations')?.value.trim() || '';
         const startDate = document.getElementById('profileStartDate').value || null;
-        const activeBlockId = document.getElementById('profileBlock')?.value || null;
-        const profile = {
-          ...(cabinetData.client?.profile || {}),
-          mainGoals: mainGoals || undefined,
-          startDate: startDate || undefined,
-          weight: weight ? parseFloat(weight) : undefined,
-          height: height ? parseFloat(height) : undefined,
-          body_fat: bodyFat ? parseFloat(bodyFat) : undefined,
-          active_block_id: activeBlockId || undefined,
-        };
-        const { error } = await supabaseClient
+        const prev = cabinetData.client?.profile || {};
+        const profile = { ...prev };
+        if (mainGoals !== '') profile.mainGoals = mainGoals;
+        else delete profile.mainGoals;
+        if (contraindications !== '') profile.contraindications = contraindications;
+        else delete profile.contraindications;
+        if (limitations !== '') profile.limitations = limitations;
+        else delete profile.limitations;
+        if (startDate) profile.startDate = startDate;
+        else delete profile.startDate;
+        if (weightRaw !== '' && weightRaw != null) {
+          const w = parseFloat(weightRaw.replace(',', '.'));
+          if (!Number.isNaN(w)) profile.weight = w;
+        } else delete profile.weight;
+        if (heightRaw !== '' && heightRaw != null) {
+          const h = parseFloat(heightRaw.replace(',', '.'));
+          if (!Number.isNaN(h)) profile.height = h;
+        } else delete profile.height;
+        if (bodyFatRaw !== '' && bodyFatRaw != null) {
+          const bf = parseFloat(bodyFatRaw.replace(',', '.'));
+          if (!Number.isNaN(bf)) profile.body_fat = bf;
+        } else delete profile.body_fat;
+
+        const { data, error } = await supabaseClient
           .from('clients')
           .update({ name, email: email || null, status, profile })
-          .eq('id', selectedClientId);
+          .eq('id', selectedClientId)
+          .select('id, profile')
+          .single();
         if (error) {
-          alert('Ошибка: ' + error.message);
+          alert('Ошибка сохранения: ' + error.message);
+          return;
+        }
+        if (!data) {
+          alert(
+            'Профиль не обновился (возможно, нет прав на запись к этому клиенту). Проверьте, что у клиента указан тренер (trainer_id).'
+          );
           return;
         }
         await loadCabinetData();
         renderCabinet();
+        alert('Профиль сохранён. Вес в подходах с собственным весом пересчитается по новому весу.');
       }
 
       function renderBlocksSection() {
@@ -915,23 +1039,286 @@
         renderCabinet();
       }
 
-      function renderLoadSection(filtered) {
-        const sessionIds = filtered.map((s) => s.id);
+      const CABINET_CATEGORY_TO_MUSCLES = {
+        грудь: { chest: 0.8, front_delt: 0.2 },
+        спина: { lats: 0.6, traps: 0.2, biceps: 0.2 },
+        ноги: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        плечи: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        руки: { biceps: 0.5, triceps: 0.5 },
+        кор: { core: 1.0 },
+        корпус: { core: 1.0 },
+        chest: { chest: 0.8, front_delt: 0.2 },
+        back: { lats: 0.6, traps: 0.2, biceps: 0.2 },
+        legs: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        shoulders: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        arms: { biceps: 0.5, triceps: 0.5 },
+        core: { core: 1.0 },
+      };
+      const CABINET_MUSCLE_TO_GROUP = {
+        quads: 'legs',
+        hamstrings: 'legs',
+        glutes: 'legs',
+        calves: 'legs',
+        lats: 'back',
+        traps: 'back',
+        low_back: 'back',
+        chest: 'chest',
+        biceps: 'arms',
+        triceps: 'arms',
+        front_delt: 'arms',
+        mid_delt: 'arms',
+        rear_delt: 'arms',
+        core: 'core',
+      };
+      const CABINET_GROUP_LABELS = {
+        legs: 'Ноги',
+        back: 'Спина',
+        chest: 'Грудь',
+        arms: 'Руки/плечи',
+        core: 'Кор',
+      };
+      const CABINET_NAME_KEYWORDS = [
+        {
+          keys: [
+            'присед',
+            'жим ног',
+            'разгибан ног',
+            'разгибания ног',
+            'сгибан ног',
+            'сгибания ног',
+            'выпад',
+            'гакк',
+            'гоблет',
+            'запрыг',
+            'прыжк',
+            'тумбу',
+            'гиперэкстензия ног',
+            'носки',
+            'squat',
+            'leg press',
+            'leg curl',
+            'leg extension',
+          ],
+          val: { quads: 0.5, hamstrings: 0.3, glutes: 0.2 },
+        },
+        {
+          keys: [
+            'подтяг',
+            'тяга верх',
+            'тяга к поясу',
+            'тяга горизон',
+            'тяга штанги',
+            'тяга гантел',
+            'тяга ',
+            'пуловер',
+            'становая',
+            'рдл',
+            'румынск',
+            'гиперэкстензия',
+            'вертикальн',
+            'deadlift',
+            'lat pulldown',
+            'cable row',
+          ],
+          val: { lats: 0.5, traps: 0.2, biceps: 0.2, low_back: 0.1 },
+        },
+        {
+          keys: [
+            'разгибан рук',
+            'разгибан на блоке',
+            'разгибания на блоке',
+            'французск',
+            'трицепс',
+            'брусья',
+            'tricep',
+            'pushdown',
+            'руки на блоке',
+            'отжимания узким',
+          ],
+          val: { triceps: 1.0 },
+        },
+        {
+          keys: [
+            'жим лёжа',
+            'жим лежа',
+            'жим штанги',
+            'жим гантел',
+            'разводка',
+            'отжимания',
+            'пекдек',
+            'пек дек',
+            'bench',
+            'грудь',
+            'chest',
+          ],
+          val: { chest: 0.8, front_delt: 0.15, triceps: 0.05 },
+        },
+        {
+          keys: [
+            'жим стоя',
+            'жим сидя',
+            'жим вверх',
+            'жим перед',
+            'махи',
+            'арнольд',
+            'подбородк',
+            'плеч',
+            'shoulder',
+            'delt',
+            'выходы силой',
+          ],
+          val: { front_delt: 0.4, mid_delt: 0.4, rear_delt: 0.2 },
+        },
+        {
+          keys: [
+            'сгибан рук',
+            'сгибан на бицепс',
+            'сгибание на бицепс',
+            'молот',
+            'бицепс',
+            'bicep',
+            'curl',
+          ],
+          val: { biceps: 1.0 },
+        },
+        {
+          keys: [
+            'планка',
+            'скручиван',
+            'подъём ног в висе',
+            'подъём ног (',
+            'пресс',
+            'кор',
+            'core',
+          ],
+          val: { core: 1.0 },
+        },
+      ];
+      function getLoadCoeffs(ex) {
+        const c = ex?.muscle_coefficients;
+        if (c && typeof c === 'object' && Object.keys(c).length > 0) return c;
+        const cat = (ex?.category || '').toLowerCase();
+        for (const [key, val] of Object.entries(CABINET_CATEGORY_TO_MUSCLES)) {
+          if (cat.includes(key)) return val;
+        }
+        const name = (ex?.name || '').toLowerCase();
+        for (const { keys, val } of CABINET_NAME_KEYWORDS) {
+          if (keys.some((k) => name.includes(k))) return val;
+        }
+        return { core: 1.0 };
+      }
+      function getCabinetClientWeight() {
+        const w = cabinetData?.client?.profile?.weight ?? cabinetData?.lastDailyWeight;
+        return Number(w) || 0;
+      }
+      /** Найти упражнение по id сета, иначе по названию — чтобы bodyweight_ratio работал даже при рассинхроне id */
+      function getExerciseForSet(st) {
+        if (!st) return null;
+        const list = cabinetData?.exercises || [];
+        let ex = list.find((e) => e.id === st.exercise_id);
+        if (ex) return ex;
+        const name = (st.exercise_name || '').trim().toLowerCase();
+        if (!name) return null;
+        ex = list.find((e) => (e.name || '').trim().toLowerCase() === name);
+        if (ex) return ex;
+        ex = list.find(
+          (e) =>
+            (e.name || '').toLowerCase().includes(name) ||
+            name.includes((e.name || '').toLowerCase())
+        );
+        return ex || null;
+      }
+      /** Дефолтные bodyweight_ratio по названию, если в справочнике не задано */
+      const BODYWEIGHT_NAME_RATIO = [
+        { keys: ['подтяг', 'брусья', 'выход силой', 'dip', 'pull-up', 'chin-up'], ratio: 1.0 },
+        { keys: ['отжимания', 'push-up'], ratio: 0.66 },
+        { keys: ['скручиван', 'планка', 'пресс', 'подъём ног', 'crunch'], ratio: 0.4 },
+        { keys: ['гиперэкстензия'], ratio: 0.5 },
+      ];
+      function getEffectiveWeightForSet(set, ex) {
+        let ratio = ex?.bodyweight_ratio;
+        if (ratio == null || Number(ratio) <= 0) {
+          const name = (ex?.name || set?.exercise_name || '').trim().toLowerCase();
+          const found = BODYWEIGHT_NAME_RATIO.find((r) => r.keys.some((k) => name.includes(k)));
+          if (found) ratio = found.ratio;
+        }
+        const isBodyweight = ratio != null && Number(ratio) > 0;
+        if (isBodyweight) {
+          const cw = getCabinetClientWeight();
+          if (cw > 0) return Math.round(cw * Number(ratio) * 10) / 10;
+          return Math.round((Number(set?.weight) || 0) * 10) / 10;
+        }
+        const w = Number(set?.weight);
+        if (w > 0) return Math.round(w * 10) / 10;
+        return 0;
+      }
+
+      function renderLoadSection() {
+        const loadFiltered = filterSessionsForLoad();
+        const sessionIds = loadFiltered.map((s) => s.id);
         const allSets = [];
         sessionIds.forEach((sid) => {
           (cabinetData.setsBySession[sid] || []).forEach((st) => allSets.push(st));
         });
+        const periodLabels = { week: 'Неделя', block: 'Блок', '3m': '3 мес', all: 'Всё время' };
+        const periodSelect = `
+        <div style="margin-bottom:16px;">
+          <label for="loadPeriodSelect" style="margin-right:8px;">Период:</label>
+          <select id="loadPeriodSelect" onchange="loadPeriod=this.value; var w=document.getElementById('section-load'); if(w) w.innerHTML=renderLoadSection();">
+            <option value="week" ${loadPeriod === 'week' ? 'selected' : ''}>Неделя</option>
+            <option value="block" ${loadPeriod === 'block' ? 'selected' : ''}>Блок</option>
+            <option value="3m" ${loadPeriod === '3m' ? 'selected' : ''}>3 мес</option>
+            <option value="all" ${loadPeriod === 'all' ? 'selected' : ''}>Всё время</option>
+          </select>
+        </div>`;
         if (!allSets.length)
-          return '<h2>Нагрузка по мышцам</h2><div class="empty-state">Нет подходов за период</div>';
+          return `<h2>Нагрузка</h2>${periodSelect}<div class="empty-state">Нет подходов за период (${periodLabels[loadPeriod] || loadPeriod})</div>`;
+
+        const exerciseById = {};
+        (cabinetData.exercises || []).forEach((e) => {
+          exerciseById[e.id] = {
+            name: e.name,
+            category: e.category,
+            muscle_coefficients: e.muscle_coefficients,
+            bodyweight_ratio: e.bodyweight_ratio,
+          };
+        });
+        const groups = {
+          legs: 0,
+          back: 0,
+          chest: 0,
+          arms: 0,
+          core: 0,
+        };
+        allSets.forEach((st) => {
+          const ex =
+            exerciseById[st.exercise_id] ||
+            (st.exercise_name ? { name: String(st.exercise_name).trim() } : null);
+          const coeffs = getLoadCoeffs(ex);
+          Object.entries(coeffs).forEach(([muscle, val]) => {
+            const g = CABINET_MUSCLE_TO_GROUP[muscle];
+            if (g && groups[g] !== undefined) groups[g] += val;
+          });
+        });
+        const muscleRows = ['legs', 'back', 'chest', 'arms', 'core']
+          .map(
+            (g) =>
+              `<tr><td>${CABINET_GROUP_LABELS[g]}</td><td>${Math.round(groups[g] * 10) / 10}</td></tr>`
+          )
+          .join('');
+
         const byEx = {};
         allSets.forEach((st) => {
           const name =
             (cabinetData.exerciseIdToName && cabinetData.exerciseIdToName[st.exercise_id]) ||
             (st.exercise_name && st.exercise_name.trim()) ||
             'Без названия';
+          const ex = exerciseById[st.exercise_id] || null;
+          const effW = getEffectiveWeightForSet(st, ex);
+          const reps = Number(st.reps) || 0;
           if (!byEx[name]) byEx[name] = { sets: 0, volume: 0 };
           byEx[name].sets += 1;
-          byEx[name].volume += (Number(st.weight) || 0) * (Number(st.reps) || 0);
+          byEx[name].volume += effW * reps;
         });
         const rows = Object.entries(byEx)
           .map(
@@ -939,7 +1326,12 @@
               `<tr><td>${name}</td><td>${v.sets}</td><td>${Math.round(v.volume)}</td></tr>`
           )
           .join('');
-        return `<h2>Нагрузка по мышцам (период: ${currentPeriod})</h2><p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">По выбранному периоду — подходы и тоннаж по упражнениям.</p><table class="data-table"><thead><tr><th>Упражнение</th><th>Подходов</th><th>Тоннаж (кг)</th></tr></thead><tbody>${rows}</tbody></table>`;
+        return `<h2>Нагрузка</h2>${periodSelect}
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Период: ${periodLabels[loadPeriod] || loadPeriod}. Распределение по мышечным группам (подходы) и по упражнениям.</p>
+        <h3 style="font-size:15px;margin-bottom:8px;">По мышечным группам (подходы)</h3>
+        <table class="data-table" style="margin-bottom:24px;"><thead><tr><th>Группа мышц</th><th>Подходов</th></tr></thead><tbody>${muscleRows}</tbody></table>
+        <h3 style="font-size:15px;margin-bottom:8px;">По упражнениям</h3>
+        <table class="data-table"><thead><tr><th>Упражнение</th><th>Подходов</th><th>Тоннаж (кг)</th></tr></thead><tbody>${rows}</tbody></table>`;
       }
 
       async function handleLogout() {
@@ -947,18 +1339,51 @@
         window.location.href = '../login.html';
       }
 
+      function showInitError(msg, detail) {
+        const app = document.getElementById('app');
+        if (!app) return;
+        app.innerHTML =
+          '<div class="cabinet-wrap" style="padding:24px;">' +
+          '<p style="color:var(--danger);font-weight:600;">' +
+          (msg || 'Ошибка загрузки') +
+          '</p>' +
+          (detail
+            ? '<p style="font-size:13px;color:var(--text-secondary);margin:8px 0;">' +
+              detail +
+              '</p>'
+            : '') +
+          '<p><a href="../login.html">На страницу входа</a> · <a href="index.html">Обновить</a></p>' +
+          '</div>';
+      }
+
       document.addEventListener('DOMContentLoaded', async () => {
+        const app = document.getElementById('app');
+        const loadTimeout = setTimeout(() => {
+          if (app && app.textContent.includes('Загрузка')) {
+            showInitError(
+              'Загрузка занимает слишком много времени',
+              'Проверьте: 1) Вход выполнен через login.html? 2) Консоль браузера (F12 → Console) на ошибки. 3) Сетевые запросы (F12 → Network).'
+            );
+          }
+        }, 12000);
+
         try {
           if (typeof window.supabase === 'undefined' || !window.SUPABASE_URL) {
-            document.getElementById('app').innerHTML =
-              '<div class="cabinet-wrap"><p style="color:var(--danger);">Не загружен конфиг Supabase. Проверьте путь к ../js/supabase-config.js</p><p><a href="../login.html">На страницу входа</a></p></div>';
+            clearTimeout(loadTimeout);
+            showInitError(
+              'Не загружен конфиг Supabase',
+              'Проверьте путь к ../js/supabase-config.js и что Supabase CDN доступен.'
+            );
             return;
           }
           supabaseClient = window.supabase.createClient(
             window.SUPABASE_URL,
             window.SUPABASE_ANON_KEY
           );
-          if (!(await requireAuth())) return;
+          if (!(await requireAuth())) {
+            clearTimeout(loadTimeout);
+            return;
+          }
           clientsList = await loadClients();
           selectedClientId = localStorage.getItem('cabinet_client_id');
           if (selectedClientId && clientsList.some((c) => c.id === selectedClientId)) {
@@ -967,17 +1392,20 @@
             document
               .querySelectorAll('.cabinet-section')
               .forEach((s) => s.classList.remove('active'));
-            document.getElementById('section-profile').classList.add('active');
+            const profileEl = document.getElementById('section-profile');
+            if (profileEl) profileEl.classList.add('active');
           } else {
             selectedClientId = null;
             showClientPicker();
           }
+          clearTimeout(loadTimeout);
         } catch (e) {
-          console.error(e);
-          document.getElementById('app').innerHTML =
-            '<div class="cabinet-wrap"><p style="color:var(--danger);">Ошибка: ' +
-            (e.message || e) +
-            '</p><p><a href="index.html">Обновить</a> · <a href="../login.html">Вход</a></p></div>';
+          clearTimeout(loadTimeout);
+          console.error('Cabinet init error:', e);
+          showInitError(
+            'Ошибка: ' + (e.message || String(e)),
+            'Проверьте консоль (F12) для деталей.'
+          );
         }
       });
     </script>
