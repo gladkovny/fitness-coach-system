@@ -1,6 +1,6 @@
 # Синхронизация с Claude — текущий статус проекта
 
-**Дата обновления:** 30 января 2026  
+**Дата обновления:** 17 февраля 2026  
 **Назначение:** при открытии проекта в Claude.ai или Cursor скопировать этот файл в контекст, чтобы понимать, на каком этапе проект и как двигаться дальше.
 
 **Правила для AI:** при любом изменении кода указывать разделы [1]–[7] и контур (Master/Supabase или Mark/GAS). Полные правила: **docs/cursorrules_v2.1.md** (Cursor), **docs/CLAUDE_RULES_V2.1.md** (Claude).
@@ -39,7 +39,7 @@
 
 ## Где мы сейчас (одним абзацем)
 
-Миграция на Supabase выполнена: база и авторизация работают, данные перенесены (тренер, клиенты, программы, блоки, сессии). Фронт master (вход + дашборд с выбором клиента) уже ходит в Supabase. Пользователь прошёл подготовку (Auth, auth_id тренера, ensure_mark_dashboard.sql) и застрял на **запуске локального сервера**: `npx` и `python`/`py` не найдены. Обход: расширение **Live Server** в Cursor (правый клик на login.html → Open with Live Server) или установка Node.js/Python. Следующий шаг: запустить сервер, открыть login.html через HTTP и проверить вход и дашборд.
+Миграция Master на Supabase завершена: вход, дашборд, трекер и кабинет тренера подключены к Supabase. Кабинет тренера реализован (список клиентов, карточка с 6 вкладками, управление видимостью дашборда клиента). Edge Function parse-workout задеплоена. Текущий фокус: стабилизация (тестирование Unified Tracker v4.4, фикс багов по фидбеку Ярослава и Кирилла), онбординг (тест на Алене), партнёрская программа. Дашборд и программа Марка пока на GAS. Для локальной проверки: `npx serve deploy/master -l 3000` или Live Server — см. раздел «Как запустить сервер».
 
 ---
 
@@ -53,6 +53,9 @@
 | Master: вход | ✅ | deploy/master/login.html — вход по Supabase, редирект на дашборд |
 | Master: дашборд | ✅ | deploy/master/dashboard — после входа список клиентов из Supabase, выбор клиента → данные (блок, тренировки, неделя) из Supabase |
 | Марк в списке клиентов | ✅ | Скрипт ensure_mark_dashboard.sql выполнен — Марк в clients с программой и блоком |
+| Master: трекер | ✅ | tracker-supabase.js — все actions (startSession, addSet, finishSession и т.д.) ходят в Supabase |
+| Кабинет тренера | ✅ | deploy/master/cabinet/ — список клиентов (index.html), карточка клиента (client.html) с 6 вкладками: Обзор, Тренировки, Тело и здоровье, Питание, Календарь, Дашборд клиента; управление видимостью блоков дашборда (client_dashboard_settings) |
+| Edge Function parse-workout | ✅ | Деплой выполнен, AI-парсинг текста тренировки |
 | Документация первого запуска | ✅ | supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md, supabase/TESTING_FIRST_TIME.md, DATA_RESTORE_AND_MARK.md |
 | Pre-commit и тесты | ✅ | Husky + lint-staged (ESLint, Prettier для staged файлов), npm test в .husky/pre-commit; tests/recognition.test.js — тесты распознавания упражнений |
 
@@ -60,8 +63,8 @@
 
 ## Где застряли
 
-- **Локальный сервер:** `npx` и `python`/`py` не распознаны (Node.js и Python не установлены или не в PATH).
-- **Цель:** раздать `deploy/master` через HTTP, чтобы открыть http://localhost:…/login.html без CORS-проблем при обращении к Supabase.
+- Ожидают внимания: баги по фидбеку Ярослава и Кирилла; тестирование онбординга на Алене.
+- Если `npx`/`python` не найден — см. раздел «Как запустить сервер» (Live Server, Node.js или Python).
 
 ---
 
@@ -106,31 +109,34 @@ php -S localhost:3000
 
 ## Следующие шаги (приоритет)
 
+**Роадмап:** приоритет «единая система для текущих клиентов» (без масштабирования до полного внедрения у себя) — [docs/ROADMAP_REFERENCE_ARCHITECTURE.md](ROADMAP_REFERENCE_ARCHITECTURE.md).
+
 ### Ближайшие (сейчас)
 
 | # | Задача | Действие |
 |---|--------|----------|
-| 1 | **Проверить вход и дашборд** | Запустить сервер: **Live Server** (правый клик login.html → Open with Live Server) или Node/Python (см. раздел «Как запустить сервер»). Открыть login.html через HTTP, войти, выбрать клиента, убедиться что данные из Supabase отображаются. |
-| 2 | **Доработать дашборд** | Восстановить muscleLoad, exerciseProgress, allRecords в loadDashboardFromSupabase. План: docs/DASHBOARD_UPGRADE_PLAN.md. Использовать Context7 для Supabase/Chart.js. |
-| 3 | **Подключить трекер к Supabase** | deploy/master/tracker — перевести на Supabase. |
+| 1 | **Стабилизация трекера** | Тестирование Unified Tracker v4.4 (2 недели), фикс багов по фидбеку Ярослава и Кирилла. |
+| 2 | **Онбординг** | Завершить тест на Алене (Google Form → Assessment), автозаполнение Goals из формы. |
+| 3 | **Марк** | Продолжить тестирование (День 41/90). |
 
-### Средний срок
+### Средний срок (единый контур)
 
 | # | Задача | Детали |
 |---|--------|--------|
-| 4 | **Дашборд Марка** | deploy/mark/dashboard — опционально перевести на Supabase. |
-| 5 | **Программа Марка** | deploy/mark/program — долгосрочно: перенести в Supabase. |
+| 4 | **Дашборд Марка** | deploy/mark/dashboard — перевести на Supabase (единый контур с остальными клиентами). |
+| 5 | **Программа Марка** | deploy/mark/program — перенести на Supabase (план на день, логирование в той же БД). |
 
-### Долгосрочно
+### Отложено (после внедрения у себя)
 
-- Постепенный отказ от GAS: заменить вызовы Master API на Supabase/Edge Functions.
+- Партнёрская программа, другие тренеры, биллинг, новые интеграции — см. [ROADMAP_REFERENCE_ARCHITECTURE.md](ROADMAP_REFERENCE_ARCHITECTURE.md).
+- Постепенный отказ от GAS для Master: уже сделано; для Марка — после переноса дашборда и программы.
 
 ---
 
 ## Два контура данных (важно для архитектуры)
 
-- **Master (тренер + офлайн-клиенты):** вход и дашборд уже на Supabase. Трекер и оценка (assessment) — следующие на интеграцию.
-- **Марк:** отдельный дашборд (Master API, clientId=1) + отдельная «Программа» (свой GAS/таблица). До полной миграции оба контура могут сосуществовать; в master-дашборде Марк уже отображается как клиент из Supabase после ensure_mark_dashboard.sql.
+- **Master (тренер + офлайн-клиенты):** вход, дашборд и трекер на Supabase. Оценка (assessment) — в процессе интеграции.
+- **Марк:** отдельный дашборд (Master API, clientId=1) + отдельная «Программа» (свой GAS/таблица). В master-дашборде Марк отображается как клиент из Supabase (ensure_mark_dashboard.sql).
 
 ---
 
@@ -147,6 +153,7 @@ php -S localhost:3000
 | supabase/DATA_RESTORE_AND_MARK.md | Восстановление данных Кирилла/Ярослава и Марка |
 | supabase/FRONTEND_INTEGRATION.md | Интеграция фронта с Supabase |
 | docs/ROADMAP_NEXT_STEPS.md | Фазы и следующие шаги по миграции |
+| docs/ROADMAP_REFERENCE_ARCHITECTURE.md | Приоритет «единая система», план до масштабирования |
 | docs/GIT_WORKFLOW.md | Когда и как коммитить, скрипт git-push.ps1 |
 | docs/CONTEXT7_SETUP.md | Настройка Context7 MCP |
 | docs/DASHBOARD_UPGRADE_PLAN.md | План muscleLoad, exerciseProgress |
@@ -155,6 +162,6 @@ php -S localhost:3000
 
 ## Что скопировать в Claude.ai при новом диалоге
 
-Кратко: «Проект fitness-coach-system. Этап: миграция Supabase. Вход и дашборд работают. Context7 настроен. Следующий шаг: доработка дашборда (muscleLoad, exerciseProgress) — docs/DASHBOARD_UPGRADE_PLAN.md. Context7: docs/CONTEXT7_SETUP.md.»
+Кратко: «Проект fitness-coach-system. Миграция Master на Supabase завершена (вход, дашборд, трекер, кабинет). Фокус: стабилизация, онбординг (Алена), единый контур Марка. Роадмап: docs/ROADMAP_REFERENCE_ARCHITECTURE.md. docs/SYNC_STATUS.md — статус, docs/CLAUDE_RULES_V2.1.md — правила.»
 
 Либо приложить/вставить содержимое этого файла (SYNC_STATUS.md) в начало диалога. Для полных правил работы с системой приложи также **docs/CLAUDE_RULES_V2.1.md**.

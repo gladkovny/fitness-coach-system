@@ -1,6 +1,6 @@
 # FITNESS COACH SYSTEM — Claude Context
 
-> Автоматически сгенерировано: 2026-02-04
+> Автоматически сгенерировано: 2026-02-19
 > Запуск: `node scripts/sync-claude.js`
 
 ## Проект
@@ -15,13 +15,14 @@
 ```
 ├── CLAUDE.md
 ├── data/
-
+│   ├── kirill-workout-2026-02-13.txt
 ├── deploy/
 │   ├── mark/
 │   │   ├── dashboard/
 │   │   ├── index.html
 │   │   ├── program/
 │   ├── master/
+│   │   ├── cabinet/
 │   │   ├── css/
 │   │   ├── dashboard/
 │   │   ├── js/
@@ -29,9 +30,12 @@
 │   │   ├── tracker/
 ├── docs/
 │   ├── API.md
+│   ├── architecture-system.excalidraw.json
+│   ├── ARCHITECTURE_DIAGRAM_README.md
 │   ├── ARCHITECTURE_PROMPT.md
 │   ├── ARCHITECTURE_V2.md
 │   ├── BODYWEIGHT_AND_INTENSITY.md
+│   ├── BUG_BODYWEIGHT_INTENSITY.md
 │   ├── CLAUDE_RULES_V2.1.md
 │   ├── CONTEXT7_SETUP.md
 │   ├── CURRENT_STATE.md
@@ -39,6 +43,9 @@
 │   ├── cursorrules_v2.1.md
 │   ├── DASHBOARD_UPGRADE_PLAN.md
 │   ├── DEPLOY.md
+│   ├── excalidraw-cs-fitness-migration.excalidraw.json
+│   ├── excalidraw-saas-reference-architecture.excalidraw.json
+│   ├── excalidraw-user-journey.excalidraw.json
 │   ├── EXERCISES_AND_AI_UPGRADE.md
 │   ├── EXERCISE_ALIASES.md
 │   ├── GIT_WORKFLOW.md
@@ -46,13 +53,18 @@
 │   ├── MIGRATION_CHECKLIST.md
 │   ├── PROJECT_INSTRUCTIONS_v2.md
 │   ├── PROJECT_OVERVIEW_AND_RULES.md
+│   ├── PROMPT_SAAS_ARCHITECTURE_ANALYSIS.md
+│   ├── PROMPT_TRAINER_CABINET_AND_BUGS.md
 │   ├── RECOGNITION_DEBUG_LEVEL3.md
 │   ├── ROADMAP_NEXT_STEPS.md
+│   ├── ROADMAP_REFERENCE_ARCHITECTURE.md
+│   ├── SAAS_ARCHITECTURE_ANALYSIS_REPORT.md
 │   ├── SERVER_SETUP_TASKS.md
 │   ├── SETUP_AND_TEST_TRACKER_DASHBOARD.md
 │   ├── SUPABASE_VS_SHEETS.md
 │   ├── SYNC_STATUS.md
 │   ├── TRACKER_DEPLOY_STATUS.md
+│   ├── WHOOP_INTEGRATION.md
 ├── gas/
 │   ├── Master API_assessment.gs
 │   ├── Master_API.gs
@@ -65,6 +77,7 @@
 ├── package.json
 ├── README.md
 ├── scripts/
+│   ├── generate-kirill-workout.js
 │   ├── git-push.ps1
 │   ├── sync-claude.js
 │   ├── sync-claude.ps1
@@ -105,6 +118,9 @@
 │   │   ├── 00012_mandatory_tasks.sql
 │   │   ├── 00013_rear_delt_alias.sql
 │   │   ├── 00014_lateral_raise_alias.sql
+│   │   ├── 00015_training_blocks_end_date_cost.sql
+│   │   ├── 00016_mandatory_tasks_block_id.sql
+│   │   ├── 00017_client_dashboard_settings.sql
 │   ├── MIGRATION_PLAN.md
 │   ├── README.md
 │   ├── scripts/
@@ -149,10 +165,10 @@
 
 **Обзор проекта:** `docs/PROJECT_OVERVIEW_AND_RULES.md` — сводка правил, частые задачи и ошибки.
 
-**Два контура:** Master (Supabase) — deploy/master: login, dashboard, tracker. Mark (GAS) — deploy/mark: dashboard, program. Идёт переход на Supabase (Фаза 2).
+**Два контура:** Master (Supabase) — deploy/master: login, dashboard, tracker, cabinet. Mark (GAS) — deploy/mark: dashboard, program. Идёт переход на Supabase (Фаза 2). Cabinet тренера: ✅ deploy/master/cabinet/ (v1.0, 6 вкладок).
 
 ## Pre-commit и тесты
-- **Husky + lint-staged:** при `git commit` запускаются `npx lint-staged` (ESLint --fix и Prettier для staged *
+- **Husky + lint-staged:** при `git commit` запускаются `np
 ```
 
 ## API Endpoints (краткий список)
@@ -183,14 +199,11 @@ POST action=saveAssessment
 ## Текущие задачи
 - [ ] Тестирование Unified Tracker v4.4 (2 недели)
 - [ ] Фикс багов по фидбеку Ярослава и Кирилла
-- [ ] Марк: День 24/90
+- [ ] Марк: День 41/90
 - [ ] Тестирование на Алене — завершить цикл
 - [ ] Автозаполнение Goals из формы
 - [ ] Список 5-7 потенциальных партнёров
 - [ ] Презентация/оффер для бета-тренеров
-- [ ] Одна и та же ошибка после 2+ попыток
-- [ ] Код работает "иногда" (нестабильно)
-- [ ] Не понимаю ПОЧЕМУ не работает (только КАК)
 
 ## Важные документы
 - **Текущий статус:** docs/SYNC_STATUS.md
