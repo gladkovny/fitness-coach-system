@@ -1,13 +1,14 @@
-# Шаблон сообщения коммита (fitness-coach-system)
-# Формат: [тип] краткое описание
+# Commit message template (fitness-coach-system)
+# Use ENGLISH to avoid encoding issues on GitHub.
+# Format: [type] short description
 #
-# Типы: feature | fix | docs | refactor | chore
+# Types: feature | fix | docs | refactor | chore
 #
-# Примеры:
-#   [feature] Подключение трекера к Supabase
-#   [fix] Исправлена загрузка списка клиентов
-#   [docs] Обновлена инструкция Git workflow
-#   [refactor] Вынесена логика API в отдельный модуль
-#   [chore] Обновлён .gitignore
+# Examples:
+#   [feature] Add Supabase tracker integration
+#   [fix] Fix dashboard client list loading
+#   [docs] Update Git workflow instructions
+#   [refactor] Move API logic to separate module
+#   [chore] Update .gitignore
 #
-# Удали комментарии и оставь только одну строку с сообщением:
+# Remove these comment lines and keep only one line with your message:
