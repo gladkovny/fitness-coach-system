@@ -32,3 +32,8 @@ build/
 
 # Git temp
 .git-commit-msg.txt
+
+# Claude Code
+.claude/mcp.json
+# settings.json коммитим — это правила безопасности
+# !.claude/settings.json
