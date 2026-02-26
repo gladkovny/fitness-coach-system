@@ -15,11 +15,14 @@ Context7 подгружает актуальную документацию би
 
 ## Шаг 2. Настроить Cursor
 
-**Вариант A — через проект (уже подготовлено)**
+**Вариант A — через проект (рекомендуется)**
 
-1. Открой файл `.cursor/mcp.json`
-2. Замени `YOUR_API_KEY` на свой ключ
-3. Перезапусти Cursor или перезагрузи окно (Cmd/Ctrl+Shift+P → "Developer: Reload Window")
+В проекте в `.cursor/mcp.json` уже прописан ключ **FC System** (Context7). Чтобы запросы шли именно с него:
+
+1. Открой этот проект в Cursor (не только глобальные настройки).
+2. Убедись, что в **Cursor Settings → Tools & MCP** в списке серверов есть `context7` и он включён — тогда используется конфиг из `.cursor/mcp.json` этого репозитория.
+3. Если ты добавлял Context7 через one-click глобально с другим ключом (например, «Fitness Coach BOT TG»), отключи дубликат или оставь только проектный конфиг, чтобы в дашборде context7.com по ключу «FC System» появлялись запросы.
+4. Перезагрузи окно: `Ctrl+Shift+P` → «Developer: Reload Window».
 
 **Вариант B — One-Click (глобально)**
 
@@ -75,3 +78,14 @@ use context7 with /supabase/supabase-js for RLS
 | `/supabase/supabase-js` | Запросы к БД, auth, RLS |
 | `chart.js` | Графики тоннажа, нагрузки |
 | `vanilla-js` | DOM, fetch (если нужно) |
+
+---
+
+## Supabase MCP (в том же `.cursor/mcp.json`)
+
+В проекте в `.cursor/mcp.json` добавлен сервер **supabase** (`https://mcp.supabase.com/mcp`). Он даёт AI доступ к твоему проекту Supabase: SQL-запросы, миграции, Edge Functions, генерация типов.
+
+**После перезагрузки окна Cursor:**
+1. **Cursor Settings → Tools & MCP** — в списке должен появиться **supabase**.
+2. При первом использовании Cursor предложит войти в аккаунт Supabase (персональный токен больше не обязателен).
+3. Проверка: спроси в чате, например: «Какие таблицы в базе? Используй MCP» — AI сможет обратиться к Supabase через MCP.

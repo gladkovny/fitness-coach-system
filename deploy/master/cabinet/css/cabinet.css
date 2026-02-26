@@ -1,0 +1,384 @@
+/**
+ * Кабинет тренера — стили (Notion-like, светлая тема)
+ */
+
+.cabinet-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.cabinet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cabinet-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cabinet-header .user-email {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cabinet-header .btn-logout {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cabinet-header .btn-logout:hover {
+  background: var(--bg);
+}
+
+/* Сетка карточек клиентов */
+.clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.client-card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s, border-color 0.2s;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  text-align: left;
+}
+
+.client-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
+}
+
+.client-card-name {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.client-card-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.client-card-status.active {
+  color: var(--success);
+}
+
+.client-card-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.client-card-link {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.client-card-link::after {
+  content: " →";
+}
+
+/* Пустое состояние */
+.cabinet-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  background: var(--card);
+  border-radius: var(--radius-md);
+}
+
+/* Загрузка */
+.cabinet-loading {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* ——— Карточка клиента (client.html) ——— */
+.cabinet-client-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cabinet-client-header .back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.cabinet-client-header .back-link:hover {
+  text-decoration: underline;
+}
+
+.cabinet-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.cabinet-tab {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cabinet-tab:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.cabinet-tab.active {
+  background: var(--card);
+  color: var(--accent);
+  border-color: var(--border);
+  border-bottom-color: var(--card);
+  margin-bottom: -1px;
+}
+
+.cabinet-tab-panel {
+  display: none;
+  padding: 20px 0;
+}
+
+.cabinet-tab-panel.active {
+  display: block;
+}
+
+/* Карточки обзора 2×2 */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 640px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overview-card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.overview-card h3 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.overview-card .card-row {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.overview-card .progress-bar {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.overview-card .progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.overview-card .btn-detail {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.overview-card .btn-detail:hover {
+  text-decoration: underline;
+}
+
+.overview-placeholder {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Таблицы и аккордеон (Тренировки) */
+.cabinet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.cabinet-table th,
+.cabinet-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.cabinet-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cabinet-table tr.session-row {
+  cursor: pointer;
+}
+
+.cabinet-table tr.session-row:hover {
+  background: var(--bg);
+}
+
+.cabinet-table .accordion-detail {
+  display: none;
+  background: var(--bg);
+}
+
+.cabinet-table tr.accordion-detail td {
+  padding: 12px 12px 12px 24px;
+  vertical-align: top;
+}
+
+.cabinet-table tr.session-row.expanded + tr.accordion-detail {
+  display: table-row;
+}
+
+.cabinet-section-title {
+  font-size: 18px;
+  margin: 24px 0 12px;
+}
+
+.cabinet-section-title:first-child {
+  margin-top: 0;
+}
+
+.cabinet-inline-input {
+  width: 100%;
+  max-width: 140px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+}
+
+.btn-sm.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.sparkline-canvas {
+  width: 120px;
+  height: 40px;
+  display: block;
+}
+
+/* Питание: цветовая индикация строк */
+.nutrition-row-low {
+  background: rgba(255, 59, 48, 0.08);
+}
+
+.nutrition-row-high {
+  background: rgba(255, 149, 0, 0.12);
+}
+
+@media (max-width: 900px) {
+  .cabinet-body-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Календарь */
+.calendar-cell {
+  width: 14.28%;
+  vertical-align: top;
+  padding: 8px !important;
+  min-height: 48px;
+}
+
+.calendar-cell.calendar-has-data {
+  cursor: pointer;
+}
+
+.calendar-cell.calendar-has-data:hover {
+  background: var(--accent-light);
+}
+
+.calendar-day-num {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.calendar-dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.calendar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.calendar-dot-workout {
+  background: #0071e3;
+}
+
+.calendar-dot-gadget {
+  background: #34c759;
+}

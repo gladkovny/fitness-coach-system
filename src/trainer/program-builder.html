@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Program Builder</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        background: #f8fafc;
+        color: #1e293b;
+        min-height: 100vh;
+        line-height: 1.5;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .steps {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+      }
+      .step-dot {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        background: #e2e8f0;
+        color: #64748b;
+      }
+      .step-dot.active {
+        background: #2563eb;
+        color: #fff;
+      }
+      .step-dot.done {
+        background: #94a3b8;
+        color: #fff;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        margin-bottom: 20px;
+      }
+      .card h2 {
+        margin: 0 0 16px;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .client-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      .client-card {
+        min-height: 44px;
+        padding: 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .client-card:hover {
+        border-color: #2563eb;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+      }
+      .client-card.new {
+        border-left: 4px solid #eab308;
+      }
+      .client-name {
+        font-weight: 600;
+      }
+      .client-meta {
+        font-size: 0.875rem;
+        color: #64748b;
+      }
+      .badge {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: #e2e8f0;
+        color: #475569;
+      }
+      .badge.new {
+        background: #fef08a;
+        color: #854d0e;
+      }
+      .two-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      @media (max-width: 700px) {
+        .two-cols {
+          grid-template-columns: 1fr;
+        }
+      }
+      .profile-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .profile-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .profile-list li:last-child {
+        border-bottom: none;
+      }
+      .profile-key {
+        color: #64748b;
+        font-size: 0.875rem;
+      }
+      .workouts-per-week-wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+      .workouts-per-week-wrap select {
+        min-height: 44px;
+        padding: 10px 14px;
+        font-size: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        min-width: 120px;
+      }
+      .btn {
+        min-height: 44px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 1rem;
+        cursor: pointer;
+        border: none;
+        transition:
+          background 0.2s,
+          transform 0.05s;
+      }
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .btn-primary {
+        background: #2563eb;
+        color: #fff;
+      }
+      .btn-primary:hover {
+        background: #1d4ed8;
+      }
+      .btn-secondary {
+        background: #f1f5f9;
+        color: #334155;
+      }
+      .btn-secondary:hover {
+        background: #e2e8f0;
+      }
+      .btn-block {
+        width: 100%;
+      }
+      .btn-small {
+        min-height: 36px;
+        padding: 8px 12px;
+        font-size: 0.875rem;
+      }
+      .block-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fafbfc;
+      }
+      .block-card h3 {
+        margin: 0 0 12px;
+        font-size: 1rem;
+      }
+      .block-card input.block-name {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 1rem;
+      }
+      .exercise-row {
+        display: grid;
+        grid-template-columns: 1fr 60px 80px 80px 36px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      @media (max-width: 600px) {
+        .exercise-row {
+          grid-template-columns: 1fr 50px 60px 32px;
+        }
+        .exercise-row .weight-notes {
+          display: none;
+        }
+      }
+      .exercise-row .ex-name-wrap {
+        position: relative;
+      }
+      .exercise-row input,
+      .exercise-row select {
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+      }
+      .ex-dropdown {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      .ex-dropdown div {
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+      .ex-dropdown div:hover {
+        background: #f1f5f9;
+      }
+      .remove-ex {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        padding: 0;
+        border-radius: 8px;
+        color: #64748b;
+        background: #f1f5f9;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: none;
+      }
+      .remove-ex:hover {
+        background: #fecaca;
+        color: #b91c1c;
+      }
+      .move-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .move-btn:hover {
+        background: #f1f5f9;
+      }
+      .task-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 36px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .task-row input,
+      .task-row select {
+        padding: 8px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+      }
+      .bottom-actions {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .bottom-actions .btn {
+        min-height: 48px;
+        padding: 14px 28px;
+        font-size: 1.0625rem;
+      }
+      .loading {
+        text-align: center;
+        padding: 24px;
+        color: #64748b;
+      }
+      .error-msg {
+        background: #fef2f2;
+        color: #b91c1c;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: #2563eb;
+        text-decoration: none;
+        font-size: 0.875rem;
+      }
+      .back-link:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="steps" id="stepIndicator">
+        <span class="step-dot active" data-step="1">1</span>
+        <span class="step-dot" data-step="2">2</span>
+        <span class="step-dot" data-step="3">3</span>
+      </div>
+
+      <!-- Step 1: Client selection -->
+      <section id="screen1" class="screen">
+        <div class="card">
+          <h2 id="step1Title"></h2>
+          <div id="clientList" class="client-grid"></div>
+          <div id="clientListLoading" class="loading"></div>
+          <div id="clientListError" class="error-msg hidden"></div>
+        </div>
+      </section>
+
+      <!-- Step 2: Profile + Schedule -->
+      <section id="screen2" class="screen hidden">
+        <a href="#" class="back-link" id="backToStep1"></a>
+        <div class="two-cols">
+          <div class="card">
+            <h2 id="profileTitle"></h2>
+            <ul class="profile-list" id="profileList"></ul>
+          </div>
+          <div class="card">
+            <h2 id="scheduleTitle"></h2>
+            <div class="workouts-per-week-wrap" id="scheduleWrap"></div>
+            <button
+              type="button"
+              class="btn btn-primary"
+              id="btnToStep3"
+              style="margin-top: 20px"
+            ></button>
+          </div>
+        </div>
+        <div id="profileError" class="error-msg hidden"></div>
+      </section>
+
+      <!-- Step 3: Program Builder -->
+      <section id="screen3" class="screen hidden">
+        <a href="#" class="back-link" id="backToStep2"></a>
+        <div class="two-cols">
+          <div class="card">
+            <h2 id="blocksTitle"></h2>
+            <button type="button" class="btn btn-secondary btn-small" id="btnAddBlock"></button>
+            <div id="blocksContainer"></div>
+          </div>
+          <div class="card">
+            <h2 id="tasksTitle"></h2>
+            <button type="button" class="btn btn-secondary btn-small" id="btnAddTask"></button>
+            <div id="tasksContainer"></div>
+          </div>
+        </div>
+        <div class="bottom-actions">
+          <div id="createError" class="error-msg hidden"></div>
+          <button type="button" class="btn btn-primary btn-block" id="btnCreateProgram"></button>
+        </div>
+      </section>
+    </div>
+
+    <script src="../js/supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      (function () {
+        'use strict';
+
+        var supabase = null;
+
+        function getSupabase() {
+          if (!supabase)
+            throw new Error(
+              'Supabase \u043D\u0435 \u0438\u043D\u0438\u0446\u0438\u0430\u043B\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D'
+            );
+          return supabase;
+        }
+
+        var L = {
+          step1Title:
+            '\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u043A\u043B\u0438\u0435\u043D\u0442\u0430',
+          step2Profile:
+            '\u041F\u0440\u043E\u0444\u0438\u043B\u044C \u043A\u043B\u0438\u0435\u043D\u0442\u0430',
+          step2WorkoutsPerWeek:
+            '\u0422\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043E\u043A \u0432 \u043D\u0435\u0434\u0435\u043B\u044E',
+          step3Blocks:
+            '\u0411\u043B\u043E\u043A\u0438 \u0442\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043E\u043A',
+          step3Tasks:
+            '\u041E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u0437\u0430\u0434\u0430\u0447\u0438',
+          btnNext:
+            '\u0414\u0430\u043B\u0435\u0435 \u2192 \u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0443',
+          btnAddBlock: '\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0431\u043B\u043E\u043A',
+          btnAddExercise:
+            '\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0443\u043F\u0440\u0430\u0436\u043D\u0435\u043D\u0438\u0435',
+          btnAddTask:
+            '\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0437\u0430\u0434\u0430\u0447\u0443',
+          btnCreate:
+            '\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0443',
+          back: '\u2190 \u041D\u0430\u0437\u0430\u0434',
+          loading: '\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430...',
+          statusNew: '\u043D\u043E\u0432\u044B\u0439',
+          typeOnline: 'online',
+          typeOffline: '\u0437\u0430\u043B',
+          typeHybrid: '\u0433\u0438\u0431\u0440\u0438\u0434',
+          categoryLfk: '\u041B\u0424\u041A',
+          categoryStretch: '\u0420\u0430\u0441\u0442\u044F\u0436\u043A\u0430',
+          categoryPosture: '\u041E\u0441\u0430\u043D\u043A\u0430',
+          categorySkill: '\u041D\u0430\u0432\u044B\u043A',
+          freqDaily: '\u0415\u0436\u0435\u0434\u043D\u0435\u0432\u043D\u043E',
+          freqAfter:
+            '\u041F\u043E\u0441\u043B\u0435 \u0442\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043A\u0438',
+          freq3x: '3\u0445 \u0432 \u043D\u0435\u0434\u0435\u043B\u044E',
+          errLoadClients:
+            '\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043A\u043B\u0438\u0435\u043D\u0442\u043E\u0432',
+          errLoadProfile:
+            '\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043F\u0440\u043E\u0444\u0438\u043B\u044F',
+          errOneBlock:
+            '\u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u0445\u043E\u0442\u044F \u0431\u044B \u043E\u0434\u0438\u043D \u0431\u043B\u043E\u043A \u0441 \u043E\u0434\u043D\u0438\u043C \u0443\u043F\u0440\u0430\u0436\u043D\u0435\u043D\u0438\u0435\u043C',
+          errCreate:
+            '\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u044B',
+          successCreated:
+            '\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430',
+          goals: '\u0426\u0435\u043B\u0438',
+          level: '\u0423\u0440\u043E\u0432\u0435\u043D\u044C',
+          contraindications:
+            '\u041F\u0440\u043E\u0442\u0438\u0432\u043E\u043F\u043E\u043A\u0430\u0437\u0430\u043D\u0438\u044F',
+          availableDays:
+            '\u0414\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0435 \u0434\u043D\u0438',
+          sets: '\u043F\u043E\u0434\u0445.',
+          reps: '\u043F\u043E\u0432\u0442.',
+          weight: '\u0432\u0435\u0441',
+          taskName: '\u0417\u0430\u0434\u0430\u0447\u0430',
+          taskCategory: '\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F',
+          taskFreq: '\u0427\u0430\u0441\u0442\u043E\u0442\u0430',
+        };
+
+        var state = {
+          step: 1,
+          clients: [],
+          selectedClient: null,
+          profile: null,
+          workoutsPerWeek: 3,
+          exercises: [],
+          blocks: [],
+          mandatoryTasks: [],
+        };
+
+        var TASK_CATEGORIES = [
+          { id: 'lfk', label: L.categoryLfk },
+          { id: 'stretch', label: L.categoryStretch },
+          { id: 'posture', label: L.categoryPosture },
+          { id: 'skill', label: L.categorySkill },
+        ];
+
+        var TASK_FREQUENCIES = [
+          { id: 'daily', label: L.freqDaily },
+          { id: 'after_workout', label: L.freqAfter },
+          { id: '3x_week', label: L.freq3x },
+        ];
+
+        function setStep(step) {
+          state.step = step;
+          document.querySelectorAll('.screen').forEach(function (el) {
+            el.classList.add('hidden');
+          });
+          var screen = document.getElementById('screen' + step);
+          if (screen) screen.classList.remove('hidden');
+          document.querySelectorAll('.step-dot').forEach(function (dot) {
+            var n = parseInt(dot.getAttribute('data-step'), 10);
+            dot.classList.remove('active', 'done');
+            if (n === step) dot.classList.add('active');
+            else if (n < step) dot.classList.add('done');
+          });
+        }
+
+        function renderClients() {
+          var list = document.getElementById('clientList');
+          var loading = document.getElementById('clientListLoading');
+          var err = document.getElementById('clientListError');
+          list.innerHTML = '';
+          err.classList.add('hidden');
+          loading.textContent = L.loading;
+          loading.classList.remove('hidden');
+          getSupabase()
+            .from('clients')
+            .select('id, name, email, status, profile')
+            .order('name')
+            .then(function (res) {
+              loading.classList.add('hidden');
+              if (res.error) throw res.error;
+              var rows = res.data || [];
+              state.clients = rows.map(function (c) {
+                var profile = c.profile && typeof c.profile === 'object' ? c.profile : {};
+                return {
+                  id: c.id,
+                  name: c.name || '',
+                  status: c.status || 'active',
+                  clientType: profile.clientType || profile.client_type || 'offline',
+                  profile: profile,
+                };
+              });
+              var clients = state.clients;
+              if (clients.length === 0) {
+                list.innerHTML =
+                  '<p style="color:#64748B;">\u041A\u043B\u0438\u0435\u043D\u0442\u044B \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u0436\u0442\u0441\u044F.</p>';
+                return;
+              }
+              clients.forEach(function (c) {
+                var card = document.createElement('div');
+                card.className =
+                  'client-card' +
+                  (String(c.status).toLowerCase() === 'new' ? ' new' : '') +
+                  (String(c.status).toLowerCase() === 'onboarding' ? ' new' : '');
+                var typeLabel =
+                  c.clientType === 'online'
+                    ? L.typeOnline
+                    : c.clientType === 'hybrid'
+                      ? L.typeHybrid
+                      : L.typeOffline;
+                card.innerHTML =
+                  '<div><span class="client-name">' +
+                  escapeHtml(c.name || c.id) +
+                  '</span><br><span class="client-meta">' +
+                  escapeHtml(typeLabel) +
+                  '</span></div>' +
+                  '<span class="badge' +
+                  (String(c.status).toLowerCase() === 'new' ||
+                  String(c.status).toLowerCase() === 'onboarding'
+                    ? ' new'
+                    : '') +
+                  '">' +
+                  escapeHtml(c.status || 'active') +
+                  '</span>';
+                card.onclick = function () {
+                  selectClient(c);
+                };
+                list.appendChild(card);
+              });
+            })
+            .catch(function (e) {
+              loading.classList.add('hidden');
+              var msg = e && e.message ? e.message : String(e);
+              err.textContent = L.errLoadClients + ' ' + msg;
+              err.classList.remove('hidden');
+              if (typeof console !== 'undefined' && console.error)
+                console.error('Program Builder load clients:', e);
+            });
+        }
+
+        function escapeHtml(s) {
+          if (s == null) return '';
+          var div = document.createElement('div');
+          div.textContent = s;
+          return div.innerHTML;
+        }
+
+        function selectClient(client) {
+          state.selectedClient = client;
+          state.profile = null;
+          document.getElementById('profileList').innerHTML = '';
+          document.getElementById('profileError').classList.add('hidden');
+          setStep(2);
+          loadProfile();
+          renderWorkoutsPerWeek();
+        }
+
+        function loadProfile() {
+          if (!state.selectedClient) return;
+          state.profile = state.selectedClient.profile || {};
+          renderProfile();
+          getSupabase()
+            .from('clients')
+            .select('profile')
+            .eq('id', state.selectedClient.id)
+            .single()
+            .then(function (res) {
+              if (!res.error && res.data && res.data.profile) state.profile = res.data.profile;
+              renderProfile();
+            })
+            .catch(function () {});
+        }
+
+        var profileLabelMap = {
+          goals: L.goals,
+          program_goal: L.goals,
+          target_weight: L.goals,
+          fitnessLevel: L.level,
+          fitness_level: L.level,
+          contraindications: L.contraindications,
+          available_days: L.availableDays,
+          client_name: '\u0418\u043C\u044F',
+          weight: '\u0412\u0435\u0441',
+          height: '\u0420\u043E\u0441\u0442',
+          age: '\u0412\u043E\u0437\u0440\u0430\u0441\u0442',
+          gender: '\u041F\u043E\u043B',
+          training_goal:
+            '\u0426\u0435\u043B\u044C \u0442\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043E\u043A',
+          injuries:
+            '\u0422\u0440\u0430\u0432\u043C\u044B/\u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0435\u043D\u0438\u044F',
+          experience: '\u041E\u043F\u044B\u0442',
+          notes: '\u0417\u0430\u043C\u0435\u0442\u043A\u0438',
+        };
+
+        function renderProfile() {
+          var ul = document.getElementById('profileList');
+          ul.innerHTML = '';
+          var p = state.profile || {};
+          var order = [
+            'client_name',
+            'weight',
+            'height',
+            'age',
+            'gender',
+            'goals',
+            'program_goal',
+            'target_weight',
+            'training_goal',
+            'fitnessLevel',
+            'fitness_level',
+            'experience',
+            'contraindications',
+            'injuries',
+            'available_days',
+            'notes',
+          ];
+          var added = {};
+          order.forEach(function (k) {
+            var v = p[k];
+            if (v === undefined || v === null || v === '') return;
+            if (typeof v === 'object') return;
+            added[k] = true;
+            var label = profileLabelMap[k] || k;
+            var li = document.createElement('li');
+            li.innerHTML =
+              '<span class="profile-key">' +
+              escapeHtml(label) +
+              ':<\/span> ' +
+              escapeHtml(String(v));
+            ul.appendChild(li);
+          });
+          Object.keys(p).forEach(function (k) {
+            if (added[k]) return;
+            var v = p[k];
+            if (v === undefined || v === null || v === '' || typeof v === 'object') return;
+            var label = profileLabelMap[k] || k;
+            var li = document.createElement('li');
+            li.innerHTML =
+              '<span class="profile-key">' +
+              escapeHtml(label) +
+              ':<\/span> ' +
+              escapeHtml(String(v));
+            ul.appendChild(li);
+          });
+          if (ul.children.length === 0) {
+            ul.innerHTML =
+              '<li class="profile-key">\u0414\u0430\u043D\u043D\u044B\u0445 \u043D\u0435\u0442<\/li>';
+          }
+        }
+
+        function renderWorkoutsPerWeek() {
+          var wrap = document.getElementById('scheduleWrap');
+          wrap.innerHTML = '';
+          var label = document.createElement('label');
+          label.style.display = 'flex';
+          label.style.alignItems = 'center';
+          label.style.gap = '8px';
+          label.innerHTML =
+            '<span style="color:#64748B;">\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\u0432\u043E:</span>';
+          var sel = document.createElement('select');
+          sel.id = 'workoutsPerWeekSelect';
+          for (var i = 1; i <= 7; i++) {
+            var opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i;
+            if (i === state.workoutsPerWeek) opt.selected = true;
+            sel.appendChild(opt);
+          }
+          sel.addEventListener('change', function () {
+            state.workoutsPerWeek = parseInt(sel.value, 10) || 1;
+          });
+          label.appendChild(sel);
+          wrap.appendChild(label);
+        }
+
+        function loadExercises() {
+          getSupabase()
+            .from('exercises')
+            .select('id, name, category, subcategory')
+            .limit(500)
+            .then(function (res) {
+              if (res.error) return;
+              state.exercises = (res.data || []).map(function (e) {
+                return {
+                  id: e.id,
+                  name: e.name || '',
+                  category: e.category || '',
+                  subcategory: e.subcategory || '',
+                };
+              });
+            });
+        }
+
+        function goToStep3() {
+          var sel = document.getElementById('workoutsPerWeekSelect');
+          if (sel) state.workoutsPerWeek = parseInt(sel.value, 10) || 1;
+          state.blocks = state.blocks.length ? state.blocks : [{ name: '', exercises: [] }];
+          state.mandatoryTasks = state.mandatoryTasks.length
+            ? state.mandatoryTasks
+            : [{ name: '', category: 'lfk', frequency: 'daily' }];
+          setStep(3);
+          renderBlocks();
+          renderTasks();
+        }
+
+        function renderBlocks() {
+          var cont = document.getElementById('blocksContainer');
+          cont.innerHTML = '';
+          state.blocks.forEach(function (block, bi) {
+            var card = document.createElement('div');
+            card.className = 'block-card';
+            card.dataset.blockIndex = bi;
+            var nameInput =
+              '<input type="text" class="block-name" placeholder="\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0430" value="' +
+              escapeHtml(block.name) +
+              '">';
+            var exList = '<div class="block-exercises"></div>';
+            var btns =
+              '<button type="button" class="btn btn-secondary btn-small btn-add-ex" style="margin-top:8px;">' +
+              L.btnAddExercise +
+              '</button>';
+            card.innerHTML =
+              '<h3>\u0411\u043B\u043E\u043A ' + (bi + 1) + '</h3>' + nameInput + exList + btns;
+            var nameEl = card.querySelector('.block-name');
+            nameEl.addEventListener('input', function () {
+              state.blocks[bi].name = nameEl.value;
+            });
+            var exCont = card.querySelector('.block-exercises');
+            (block.exercises || []).forEach(function (ex, ei) {
+              exCont.appendChild(makeExerciseRow(bi, ei, ex));
+            });
+            card.querySelector('.btn-add-ex').onclick = function () {
+              state.blocks[bi].exercises = state.blocks[bi].exercises || [];
+              state.blocks[bi].exercises.push({
+                exerciseId: '',
+                exerciseName: '',
+                sets: 3,
+                reps: '10',
+                weight: '',
+                notes: '',
+              });
+              renderBlocks();
+            };
+            cont.appendChild(card);
+          });
+        }
+
+        function makeExerciseRow(blockIdx, exIdx, ex) {
+          var row = document.createElement('div');
+          row.className = 'exercise-row';
+          row.dataset.blockIdx = blockIdx;
+          row.dataset.exIdx = exIdx;
+          var nameWrap = document.createElement('div');
+          nameWrap.className = 'ex-name-wrap';
+          var nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.placeholder = '\u0423\u043F\u0440\u0430\u0436\u043D\u0435\u043D\u0438\u0435';
+          nameInput.value = ex.exerciseName || '';
+          nameInput.dataset.exerciseId = ex.exerciseId || '';
+          nameInput.addEventListener('focus', function () {
+            showExerciseDropdown(nameInput, blockIdx, exIdx);
+          });
+          nameInput.addEventListener('input', function () {
+            if (!nameInput.dataset.exerciseId)
+              state.blocks[blockIdx].exercises[exIdx].exerciseName = nameInput.value;
+            filterAndShowDropdown(nameInput, blockIdx, exIdx);
+          });
+          nameInput.addEventListener('blur', function () {
+            setTimeout(function () {
+              hideDropdown();
+            }, 200);
+          });
+          nameWrap.appendChild(nameInput);
+          var setsInput = document.createElement('input');
+          setsInput.type = 'number';
+          setsInput.min = 1;
+          setsInput.value = ex.sets != null ? ex.sets : 3;
+          setsInput.addEventListener('input', function () {
+            state.blocks[blockIdx].exercises[exIdx].sets = parseInt(setsInput.value, 10) || 1;
+          });
+          var repsInput = document.createElement('input');
+          repsInput.type = 'text';
+          repsInput.placeholder = '10';
+          repsInput.value = ex.reps != null ? ex.reps : '10';
+          repsInput.addEventListener('input', function () {
+            state.blocks[blockIdx].exercises[exIdx].reps = repsInput.value;
+          });
+          var weightInput = document.createElement('input');
+          weightInput.className = 'weight-notes';
+          weightInput.type = 'text';
+          weightInput.placeholder = L.weight;
+          weightInput.value = ex.weight != null ? ex.weight : '';
+          weightInput.addEventListener('input', function () {
+            state.blocks[blockIdx].exercises[exIdx].weight = weightInput.value;
+          });
+          var removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'remove-ex';
+          removeBtn.innerHTML = '\u2715';
+          removeBtn.onclick = function () {
+            state.blocks[blockIdx].exercises.splice(exIdx, 1);
+            renderBlocks();
+          };
+          row.appendChild(nameWrap);
+          row.appendChild(setsInput);
+          row.appendChild(repsInput);
+          row.appendChild(weightInput);
+          row.appendChild(removeBtn);
+          return row;
+        }
+
+        var dropdownEl = null;
+        function showExerciseDropdown(inputEl, blockIdx, exIdx) {
+          filterAndShowDropdown(inputEl, blockIdx, exIdx);
+        }
+        function filterAndShowDropdown(inputEl, blockIdx, exIdx) {
+          hideDropdown();
+          var q = (inputEl.value || '').toLowerCase().trim();
+          var list = state.exercises
+            .filter(function (e) {
+              return (
+                (e.name && e.name.toLowerCase().indexOf(q) >= 0) ||
+                (e.id && e.id.toLowerCase().indexOf(q) >= 0)
+              );
+            })
+            .slice(0, 15);
+          if (list.length === 0 && !q) list = state.exercises.slice(0, 15);
+          dropdownEl = document.createElement('div');
+          dropdownEl.className = 'ex-dropdown';
+          list.forEach(function (e) {
+            var d = document.createElement('div');
+            d.textContent = e.name || e.id;
+            d.onclick = function () {
+              inputEl.value = e.name || e.id;
+              inputEl.dataset.exerciseId = e.id;
+              state.blocks[blockIdx].exercises[exIdx].exerciseId = e.id;
+              state.blocks[blockIdx].exercises[exIdx].exerciseName = e.name || e.id;
+              hideDropdown();
+            };
+            dropdownEl.appendChild(d);
+          });
+          inputEl.parentNode.appendChild(dropdownEl);
+        }
+        function hideDropdown() {
+          if (dropdownEl && dropdownEl.parentNode) dropdownEl.parentNode.removeChild(dropdownEl);
+          dropdownEl = null;
+        }
+
+        function renderTasks() {
+          var cont = document.getElementById('tasksContainer');
+          cont.innerHTML = '';
+          state.mandatoryTasks.forEach(function (task, ti) {
+            var row = document.createElement('div');
+            row.className = 'task-row';
+            var nameInput = document.createElement('input');
+            nameInput.placeholder = L.taskName;
+            nameInput.value = task.name || '';
+            nameInput.addEventListener('input', function () {
+              state.mandatoryTasks[ti].name = nameInput.value;
+            });
+            var catSelect = document.createElement('select');
+            TASK_CATEGORIES.forEach(function (c) {
+              var opt = document.createElement('option');
+              opt.value = c.id;
+              opt.textContent = c.label;
+              if (task.category === c.id) opt.selected = true;
+              catSelect.appendChild(opt);
+            });
+            catSelect.addEventListener('change', function () {
+              state.mandatoryTasks[ti].category = catSelect.value;
+            });
+            var freqSelect = document.createElement('select');
+            TASK_FREQUENCIES.forEach(function (f) {
+              var opt = document.createElement('option');
+              opt.value = f.id;
+              opt.textContent = f.label;
+              if (task.frequency === f.id) opt.selected = true;
+              freqSelect.appendChild(opt);
+            });
+            freqSelect.addEventListener('change', function () {
+              state.mandatoryTasks[ti].frequency = freqSelect.value;
+            });
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-ex';
+            removeBtn.innerHTML = '\u2715';
+            removeBtn.onclick = function () {
+              state.mandatoryTasks.splice(ti, 1);
+              renderTasks();
+            };
+            row.appendChild(nameInput);
+            row.appendChild(catSelect);
+            row.appendChild(freqSelect);
+            row.appendChild(removeBtn);
+            cont.appendChild(row);
+          });
+        }
+
+        function syncBlocksFromDom() {
+          document.querySelectorAll('.block-card').forEach(function (card) {
+            var bi = parseInt(card.dataset.blockIndex, 10);
+            if (isNaN(bi) || !state.blocks[bi]) return;
+            var nameEl = card.querySelector('.block-name');
+            if (nameEl) state.blocks[bi].name = nameEl.value;
+          });
+        }
+
+        function validateAndCreate() {
+          syncBlocksFromDom();
+          var hasBlockWithEx = state.blocks.some(function (b) {
+            return (
+              b.exercises &&
+              b.exercises.length > 0 &&
+              b.exercises.some(function (e) {
+                return e.exerciseId || (e.exerciseName && e.exerciseName.trim());
+              })
+            );
+          });
+          if (!hasBlockWithEx) {
+            document.getElementById('createError').textContent = L.errOneBlock;
+            document.getElementById('createError').classList.remove('hidden');
+            return;
+          }
+          document.getElementById('createError').classList.add('hidden');
+          var clientId = state.selectedClient.id;
+          var blocksPayload = state.blocks.map(function (b) {
+            return {
+              name: b.name || '',
+              exercises: (b.exercises || [])
+                .filter(function (e) {
+                  return e.exerciseId || (e.exerciseName && e.exerciseName.trim());
+                })
+                .map(function (e) {
+                  return {
+                    exerciseId: e.exerciseId || '',
+                    exerciseName: e.exerciseName || '',
+                    sets: parseInt(e.sets, 10) || 1,
+                    reps: String(e.reps != null ? e.reps : ''),
+                    weight: String(e.weight != null ? e.weight : ''),
+                    notes: String(e.notes != null ? e.notes : ''),
+                  };
+                }),
+            };
+          });
+          var tasksPayload = state.mandatoryTasks
+            .filter(function (t) {
+              return t.name && t.name.trim();
+            })
+            .map(function (t) {
+              return {
+                name: t.name.trim(),
+                category: t.category || 'lfk',
+                frequency: t.frequency || 'daily',
+              };
+            });
+          var totalSessions = Math.max(12, (state.workoutsPerWeek || 1) * 4);
+          var today = new Date().toISOString().slice(0, 10);
+          var sb = getSupabase();
+
+          (function run() {
+            sb.from('clients')
+              .select('trainer_id')
+              .eq('id', clientId)
+              .single()
+              .then(function (cr) {
+                if (cr.error || !cr.data || !cr.data.trainer_id)
+                  throw new Error(
+                    '\u041A\u043B\u0438\u0435\u043D\u0442 \u0438\u043B\u0438 \u0442\u0440\u0435\u043D\u0435\u0440 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D'
+                  );
+                return cr.data.trainer_id;
+              })
+              .then(function (trainerId) {
+                return sb
+                  .from('programs')
+                  .select('id')
+                  .eq('client_id', clientId)
+                  .limit(1)
+                  .maybeSingle()
+                  .then(function (pr) {
+                    if (pr.error) throw pr.error;
+                    if (pr.data && pr.data.id) return pr.data.id;
+                    return sb
+                      .from('programs')
+                      .insert({
+                        trainer_id: trainerId,
+                        client_id: clientId,
+                        name: '\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430',
+                        type: 'offline',
+                        status: 'active',
+                      })
+                      .select('id')
+                      .single()
+                      .then(function (ins) {
+                        if (ins.error) throw ins.error;
+                        return ins.data.id;
+                      });
+                  });
+              })
+              .then(function (programId) {
+                var firstBlockId = null;
+                var ins = blocksPayload.map(function (b) {
+                  var template = (b.exercises || []).map(function (e) {
+                    return {
+                      exercise_id: e.exerciseId || null,
+                      exercise_name: e.exerciseName || '',
+                      sets: e.sets,
+                      reps: e.reps,
+                      weight: e.weight,
+                      notes: e.notes,
+                    };
+                  });
+                  return sb
+                    .from('training_blocks')
+                    .insert({
+                      program_id: programId,
+                      name: b.name || '\u0411\u043B\u043E\u043A',
+                      total_sessions: totalSessions,
+                      used_sessions: 0,
+                      start_date: today,
+                      status: 'active',
+                      exercise_template: template,
+                    })
+                    .select('id')
+                    .single();
+                });
+                return Promise.all(ins).then(function (results) {
+                  results.forEach(function (r) {
+                    if (r.data && r.data.id && firstBlockId === null) firstBlockId = r.data.id;
+                  });
+                  return firstBlockId;
+                });
+              })
+              .then(function (firstBlockId) {
+                var taskInserts = tasksPayload.map(function (t) {
+                  return sb.from('mandatory_tasks').insert({
+                    client_id: clientId,
+                    name: t.name,
+                    category: t.category,
+                    block_id: firstBlockId || null,
+                    active: true,
+                  });
+                });
+                return Promise.all(taskInserts).then(function () {});
+              })
+              .then(function () {
+                return sb.from('clients').update({ status: 'active' }).eq('id', clientId);
+              })
+              .then(function (up) {
+                if (up.error) throw up.error;
+                document.getElementById('createError').classList.add('hidden');
+                alert(L.successCreated);
+                setStep(1);
+                state.selectedClient = null;
+                state.blocks = [];
+                state.mandatoryTasks = [];
+                renderClients();
+              })
+              .catch(function (err) {
+                document.getElementById('createError').textContent =
+                  L.errCreate + ' ' + (err && err.message ? err.message : String(err));
+                document.getElementById('createError').classList.remove('hidden');
+              });
+          })();
+        }
+
+        document.getElementById('step1Title').textContent = L.step1Title;
+        document.getElementById('profileTitle').textContent = L.step2Profile;
+        document.getElementById('scheduleTitle').textContent = L.step2WorkoutsPerWeek;
+        document.getElementById('blocksTitle').textContent = L.step3Blocks;
+        document.getElementById('tasksTitle').textContent = L.step3Tasks;
+        document.getElementById('btnToStep3').textContent = L.btnNext;
+        document.getElementById('btnAddBlock').textContent = L.btnAddBlock;
+        document.getElementById('btnAddTask').textContent = L.btnAddTask;
+        document.getElementById('btnCreateProgram').textContent = L.btnCreate;
+        document.getElementById('backToStep1').textContent = L.back;
+        document.getElementById('backToStep2').textContent = L.back;
+
+        document.getElementById('btnToStep3').onclick = goToStep3;
+        document.getElementById('btnCreateProgram').onclick = validateAndCreate;
+        document.getElementById('backToStep1').onclick = function (e) {
+          e.preventDefault();
+          setStep(1);
+        };
+        document.getElementById('backToStep2').onclick = function (e) {
+          e.preventDefault();
+          setStep(2);
+        };
+
+        document.getElementById('btnAddBlock').onclick = function () {
+          state.blocks.push({ name: '', exercises: [] });
+          renderBlocks();
+        };
+
+        function init() {
+          var loadingEl = document.getElementById('clientListLoading');
+          var listEl = document.getElementById('clientList');
+          var errEl = document.getElementById('clientListError');
+          loadingEl.classList.add('hidden');
+          errEl.classList.add('hidden');
+
+          if (
+            typeof window.supabase === 'undefined' ||
+            !window.SUPABASE_URL ||
+            !window.SUPABASE_ANON_KEY
+          ) {
+            errEl.textContent =
+              '\u041D\u0435 \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D \u043A\u043E\u043D\u0444\u0438\u0433 Supabase (\u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 supabase-config.js).';
+            errEl.classList.remove('hidden');
+            setStep(1);
+            return;
+          }
+          supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+          supabase.auth
+            .getSession()
+            .then(function (_ref) {
+              var session = _ref.data && _ref.data.session;
+              setStep(1);
+              if (!session) {
+                listEl.innerHTML =
+                  '<p style="color:#64748B;margin:0 0 12px;">\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F \u0432\u0445\u043E\u0434 \u0432 \u0441\u0438\u0441\u0442\u0435\u043C\u0443, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u043A\u043B\u0438\u0435\u043D\u0442\u043E\u0432.</p><p><a href="../login.html" style="color:#2563EB;">\u0412\u043E\u0439\u0442\u0438</a></p>';
+                errEl.classList.add('hidden');
+                return;
+              }
+              renderClients();
+              loadExercises();
+            })
+            .catch(function (e) {
+              errEl.textContent = L.errLoadClients + ' ' + (e && e.message ? e.message : '');
+              errEl.classList.remove('hidden');
+              listEl.innerHTML = '';
+            });
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+      })();
+    </script>
+  </body>
+</html>

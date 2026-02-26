@@ -1,6 +1,5 @@
-{
+﻿{
   "permissions": {
-
     "allow": [
       "Bash(git status)",
       "Bash(git diff:*)",
@@ -21,7 +20,6 @@
       "Bash(pytest:*)",
       "Bash(python -m pytest:*)"
     ],
-
     "ask": [
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -38,25 +36,14 @@
       "Bash(mkdir:*)",
       "WebFetch"
     ],
-
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(sudo:*)",
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(ssh:*)",
-      "Bash(scp:*)",
-      "Bash(chmod 777:*)",
       "Bash(git push --force:*)",
-      "Bash(git reset --hard:*)",
-      "Read(../**/.env)",
-      "Read(~/.ssh/**)",
-      "Read(~/.aws/**)",
-      "Read(C:/Users/**/.ssh/**)"
+      "Bash(git reset --hard:*)"
     ]
-  },
-
-  "enabledMcpjsonServers": ["context7", "supabase", "sequential-thinking"],
-
-  "sandbox": true
+  }
 }

@@ -1,7 +1,6 @@
-# FITNESS COACH SYSTEM — Claude Context
+# TELEGRAM MINI APP — Claude Context
 
-> Автоматически сгенерировано: 2026-02-19
-> Запуск: `node scripts/sync-claude.js`
+> Обновлено: 2026-02-26
 
 ## 🗂 ЭКОСИСТЕМА ПРОЕКТОВ
 
@@ -29,6 +28,14 @@
 ⚠️ Таблица `exercises` — **общая** для fitness-coach-system и Telegram_Mini_App.
 GIF и ссылки на видео хранятся в `exercises.gif_url` / `exercises.video_url`.
 
+## 📊 ОБЩИЙ СТАТУС ЭКОСИСТЕМЫ
+Актуальный статус всех трёх проектов: `../STATUS_ALL_PROJECTS.md`
+```
+
+**Как обновлять файл:** когда заканчиваешь крупный этап — просишь Claude Code:
+```
+обнови ../STATUS_ALL_PROJECTS.md — отметь [задача] как Done
+
 ## 🔗 СВЯЗИ МЕЖДУ ПРОЕКТАМИ
 
 exercise-video-bot (@gif_converter_bot)
@@ -55,222 +62,101 @@ fitness-coach-system (CRM)
 
 ---
 
-## Проект
-Коробочная SaaS-система для фитнес-тренеров.
-- **Backend**: Supabase (auth, БД для master) + GAS (часть потоков, Марк)
-- **Frontend**: Vanilla HTML/CSS/JS (deploy/master, deploy/mark)
-- **Database**: Supabase (основные данные) + Google Sheets (исторические до полного перехода)
-- **Hosting**: Netlify
-- **Этап**: Миграция на Supabase. Трекер и дашборд master на Supabase.
+## О ПРОЕКТЕ
 
-## Структура проекта
+- **Бот**: @fitprogabot (python-telegram-bot v20, async)
+- **Mini App**: `Telegram_Mini_App/miniapp/index.html` (Vanilla JS, Telegram WebApp API, Supabase JS)
+- **Backend**: Supabase (Python SDK supabase==2.x в боте; Supabase JS в Mini App)
+- **Деплой бота**: Railway
+- **Деплой Mini App**: GitHub Pages / Netlify
+- **Язык бота**: Python 3.11
+
+## СТРУКТУРА
+
 ```
-├── CLAUDE.md
-├── data/
-│   ├── kirill-workout-2026-02-13.txt
-├── deploy/
-│   ├── mark/
-│   │   ├── dashboard/
-│   │   ├── index.html
-│   │   ├── program/
-│   ├── master/
-│   │   ├── cabinet/
-│   │   ├── css/
-│   │   ├── dashboard/
-│   │   ├── js/
-│   │   ├── login.html
-│   │   ├── tracker/
-├── docs/
-│   ├── API.md
-│   ├── architecture-system.excalidraw.json
-│   ├── ARCHITECTURE_DIAGRAM_README.md
-│   ├── ARCHITECTURE_PROMPT.md
-│   ├── ARCHITECTURE_V2.md
-│   ├── BODYWEIGHT_AND_INTENSITY.md
-│   ├── BUG_BODYWEIGHT_INTENSITY.md
-│   ├── CLAUDE_RULES_V2.1.md
-│   ├── CONTEXT7_SETUP.md
-│   ├── CURRENT_STATE.md
-│   ├── CURRENT_STATE_v5.md
-│   ├── cursorrules_v2.1.md
-│   ├── DASHBOARD_UPGRADE_PLAN.md
-│   ├── DEPLOY.md
-│   ├── excalidraw-cs-fitness-migration.excalidraw.json
-│   ├── excalidraw-saas-reference-architecture.excalidraw.json
-│   ├── excalidraw-user-journey.excalidraw.json
-│   ├── EXERCISES_AND_AI_UPGRADE.md
-│   ├── EXERCISE_ALIASES.md
-│   ├── GIT_WORKFLOW.md
-│   ├── MANDATORY_TASKS_STRUCTURE.md
-│   ├── MIGRATION_CHECKLIST.md
-│   ├── PROJECT_INSTRUCTIONS_v2.md
-│   ├── PROJECT_OVERVIEW_AND_RULES.md
-│   ├── PROMPT_SAAS_ARCHITECTURE_ANALYSIS.md
-│   ├── PROMPT_TRAINER_CABINET_AND_BUGS.md
-│   ├── RECOGNITION_DEBUG_LEVEL3.md
-│   ├── ROADMAP_NEXT_STEPS.md
-│   ├── ROADMAP_REFERENCE_ARCHITECTURE.md
-│   ├── SAAS_ARCHITECTURE_ANALYSIS_REPORT.md
-│   ├── SERVER_SETUP_TASKS.md
-│   ├── SETUP_AND_TEST_TRACKER_DASHBOARD.md
-│   ├── SUPABASE_VS_SHEETS.md
-│   ├── SYNC_STATUS.md
-│   ├── TRACKER_DEPLOY_STATUS.md
-│   ├── WHOOP_INTEGRATION.md
-├── gas/
-│   ├── Master API_assessment.gs
-│   ├── Master_API.gs
-│   ├── MigrateToSupabase.gs
-│   ├── Onboarding.gs
-│   ├── ONBOARDING_V2.gs
-│   ├── online_API_v4.gs
-├── netlify.toml
-├── package-lock.json
-├── package.json
+Telegram_Mini_App/           # корень репозитория
+├── CLAUDE.md                # этот файл
 ├── README.md
-├── scripts/
-│   ├── generate-kirill-workout.js
-│   ├── git-push.ps1
-│   ├── sync-claude.js
-│   ├── sync-claude.ps1
-├── src/
-│   ├── css/
-│   │   ├── common.css
-│   ├── dashboard/
-│   │   ├── index.html
-│   ├── js/
-│   │   ├── api.js
-│   │   ├── utils.js
-│   ├── online/
-│   │   ├── dashboard/
-│   │   ├── program/
-│   ├── tracker/
-│   │   ├── assessment.html
-│   │   ├── index.html
-├── supabase/
-│   ├── AUTH_SETUP.md
-│   ├── config.template.env
-│   ├── DATA_RESTORE_AND_MARK.md
-│   ├── EXERCISES_SEED.md
-│   ├── FRONTEND_INTEGRATION.md
-│   ├── functions/
-│   │   ├── parse-workout/
-│   ├── migrations/
-│   │   ├── 00001_initial_schema.sql
-│   │   ├── 00002_rls_policies.sql
-│   │   ├── 00003_add_auth_id.sql
-│   │   ├── 00004_real_rls_policies.sql
-│   │   ├── 00005_seed_exercises.sql
-│   │   ├── 00006_exercise_muscle_coefficients.sql
-│   │   ├── 00007_refill_muscle_coefficients.sql
-│   │   ├── 00008_workout_sets_exercise_name.sql
-│   │   ├── 00009_exercises_bodyweight_ratio.sql
-│   │   ├── 00010_client_profile_weight.sql
-│   │   ├── 00011_exercises_aliases.sql
-│   │   ├── 00012_mandatory_tasks.sql
-│   │   ├── 00013_rear_delt_alias.sql
-│   │   ├── 00014_lateral_raise_alias.sql
-│   │   ├── 00015_training_blocks_end_date_cost.sql
-│   │   ├── 00016_mandatory_tasks_block_id.sql
-│   │   ├── 00017_client_dashboard_settings.sql
-│   ├── MIGRATION_PLAN.md
-│   ├── README.md
-│   ├── scripts/
-│   │   ├── backfill-client-profile.js
-│   │   ├── backfill-exercise-names.js
-│   │   ├── backfill-session-names.js
-│   │   ├── config.json
-│   │   ├── config.sample.json
-│   │   ├── ensure_mark_dashboard.sql
-│   │   ├── fix_mark_as_client.sql
-│   │   ├── helical-beaker-437403-u3-a18c3a4ed871.json
-│   │   ├── lib/
-│   │   ├── link_trainer_auth.sql
-│   │   ├── migrate.js
-│   │   ├── package-lock.json
-│   │   ├── package.json
-│   │   ├── README.md
-│   │   ├── setup_auth.js
-│   │   ├── setup_auth.sql
-│   ├── SETUP_CHECKLIST.md
-│   ├── TESTING_FIRST_TIME.md
-│   ├── ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md
-├── tests/
-│   ├── recognition.js
-│   ├── recognition.test.js
+├── Telegram_Mini_App/       # основной код
+│   ├── bot/
+│   │   ├── main.py          # точка входа, регистрация хендлеров
+│   │   ├── handlers/        # start, trainer, client, settings
+│   │   ├── db/              # supabase.py — клиент и все запросы к БД
+│   │   ├── storage/        # gif.py — загрузка GIF в Supabase Storage
+│   │   ├── utils/           # menu, formatter, dedupe, reply_no_dup
+│   │   ├── constants/      # categories.py — категории упражнений
+│   │   └── requirements.txt
+│   ├── miniapp/
+│   │   └── index.html       # единственная страница Mini App (программа + отчёт)
+│   ├── docs/
+│   │   ├── UX_COPY_FINAL.md       # единственный источник текстов бота
+│   │   ├── КОМАНДЫ_И_ОТВЕТЫ_БОТА.md
+│   │   ├── ROADMAP.md
+│   │   ├── CHECKLIST_PHASE1_1.8.md
+│   │   └── MCP_НАСТРОЙКА.md
+│   ├── scripts/            # delete_test_accounts, send_test_report, set_trainer_role, check_supabase, delete_client
+│   ├── supabase/            # WEBHOOK_SETUP.md
+│   ├── check_db_connection.py
+│   └── run_migration.py
 ```
 
-## .cursorrules
-```
-# FITNESS COACH SYSTEM — Cursor Rules
+## HANDLERS
 
-## О проекте
-Коробочная SaaS-система для фитнес-тренеров. Владелец: Николай (не программист, работает с AI).
+| Файл | Назначение |
+|------|------------|
+| `bot/handlers/start.py` | `/start`, выбор роли (тренер/клиент), deep link `add_<trainer_id>` для подключения клиента, отправка меню тренера |
+| `bot/handlers/trainer.py` | Добавление клиента (`/addclient`, «Добавить клиента»), библиотека упражнений (сток/персональные, добавление GIF/ссылки), создание программы (ConversationHandler), повтор/отправка тренировки (ConversationHandler), обработка WebApp Data от Mini App |
+| `bot/handlers/client.py` | Ответ клиенту на произвольное текстовое сообщение (подсказка про программы и отчёты) |
+| `bot/handlers/settings.py` | Меню настроек: подсказки, уведомления об отчётах, режим меню (авто/зафиксировано); callback-кнопки |
 
-**Полные правила (обязательно при изменениях кода):** `docs/cursorrules_v2.1.md` — 7 разделов системы, два контура (Master/Supabase и Mark/GAS), формат ответов, риски, откат. Для Claude: `docs/CLAUDE_RULES_V2.1.md`. Текущий статус: `docs/SYNC_STATUS.md`.
+## БАЗА ДАННЫХ
 
-**Context7 (автоматически):** При ЛЮБОЙ задаче, касающейся Supabase JavaScript, Chart.js, RLS, Edge Functions или других внешних библиотек — АВТОМАТИЧЕСКИ использовать Context7 MCP для актуальной документации. Не полагаться на данные обучения — всегда подтягивать свежую документацию через Context7. Явный промпт «use context7» не требуется. См. `docs/CONTEXT7_SETUP.md`.
+Проект подключён к **единой БД fitness-coach-system**. Таблицы, используемые этим проектом (Supabase):
 
-**При любом изменении кода указывать:** затронутые разделы [1]–[7], контур (Master или Mark), риски, чек-лист проверки.
+- **users** — id (Telegram), username, full_name, role (trainer|client), trainer_id (у клиентов), settings (JSONB: hints_enabled, notifications_enabled, menu_state)
+- **exercises** — telegram_trainer_id, telegram_client_id (null = сток), name, category, source_type, gif_url, ext_url
+- **programs** — telegram_trainer_id, telegram_client_id, name, exercises (JSONB), mode, mandatory_tasks, status
+- **reports** — program_id, client_id, trainer_id, data (массив отчётов по упражнениям)
 
-**Сложные задачи:** делить на этапы, делать постепенно (один этап за раз). Правило `.cursor/rules/low-resource-agent.mdc`. При большой задаче — предложить разбиение, спросить с чего начать.
+Storage: бакет `exercise-gifs`, пути `{trainer_id}/stock/{category}/{name}.gif` и `{trainer_id}/clients/{client_id}/{name}.gif`.
 
-**Обзор проекта:** `docs/PROJECT_OVERVIEW_AND_RULES.md` — сводка правил, частые задачи и ошибки.
+## ТЕКСТЫ БОТА
 
-**Два контура:** Master (Supabase) — deploy/master: login, dashboard, tracker, cabinet. Mark (GAS) — deploy/mark: dashboard, program. Идёт переход на Supabase (Фаза 2). Cabinet тренера: ✅ deploy/master/cabinet/ (v1.0, 6 вкладок).
+Все тексты сообщений — в **docs/UX_COPY_FINAL.md**  
+Не придумывать тексты самостоятельно — только из этого файла.
 
-## Pre-commit и тесты
-- **Husky + lint-staged:** при `git commit` запускаются `np
-```
+## MCP ИНСТРУМЕНТЫ
 
-## API Endpoints (краткий список)
-```
-GET  ?action=getClients
-GET  ?action=getOfflineDashboard&clientId=X&period=block
-GET  ?action=getOnlineDay&clientId=X&weekNumber=N&dayNumber=N
-POST action=startSession
-POST action=addSet
-POST action=finishSession
-POST action=saveAssessment
-```
+- Context7: use library /python-telegram-bot/python-telegram-bot
+- Context7: use library /supabase/supabase-py
+- Supabase MCP: проверять схему таблиц перед написанием SQL
 
-## Правила
-- Комментарии: РУССКИЙ
-- Переменные: английский camelCase  
-- Даты: ISO (YYYY-MM-DD)
-- Mobile-first дизайн
+## ПРАВИЛА
 
-## Клиенты
-| ID | Тип | Описание |
-|----|-----|----------|
-| yaroslav | offline | Сплит |
-| kirill | offline | Фулбоди |
-| mark | online | 90 дней |
-| alena | hybrid | — |
+- Все функции async/await (python-telegram-bot v20 — только async)
+- Комментарии на русском
+- snake_case для переменных
+- Один файл = один handler (логически: start, trainer, client, settings)
+- В коммитах, миграциях, выводе скриптов в консоль — только латиница (см. .cursor/rules/encoding-latin-only.mdc)
 
-## Текущие задачи
-- [ ] Тестирование Unified Tracker v4.4 (2 недели)
-- [ ] Фикс багов по фидбеку Ярослава и Кирилла
-- [ ] Марк: День 41/90
-- [ ] Тестирование на Алене — завершить цикл
-- [ ] Автозаполнение Goals из формы
-- [ ] Список 5-7 потенциальных партнёров
-- [ ] Презентация/оффер для бета-тренеров
+## ТЕКУЩИЕ ЗАДАЧИ
 
-## Важные документы
-- **Текущий статус:** docs/SYNC_STATUS.md
-- **Правила для AI:** docs/CLAUDE_RULES_V2.1.md, docs/cursorrules_v2.1.md
-- **Задачи на будущее:** docs/ROADMAP_NEXT_STEPS.md (раздел «Задачи на будущее»)
+- **Переход на единую БД fitness-coach-system** — Done (2026-02-26).
+
+По `docs/ROADMAP.md`:
+
+- **Фаза 2**: UX-тексты и пустые состояния (приветствия по состояниям меню, пустые библиотеки, контекстные подсказки, учёт hints_enabled).
+- **Фаза 3**: FAQ и диспетчер текста (ключевые слова, ответы FAQ, fallback).
+- **Фаза 4**: Mini App тексты, формат отчёта тренеру, уведомление тренера с учётом notifications_enabled.
+- **Фаза 5**: Деплой (Railway, Mini App в прод), webhook отчётов, RLS, pytest для хендлеров и db.
+
+Открытых TODO/FIXME в коде не найдено.
 
 ## 🔄 СИНХРОНИЗАЦИЯ С ДРУГИМИ ПРОЕКТАМИ
 
-При изменении таблицы `exercises`:
-→ Уведомить Telegram_Mini_App (использует ту же таблицу)
-→ Проверить совместимость с exercise-video-bot (пишет в exercises.gif_url)
+При изменении таблицы **exercises**:
+→ Проверить совместимость с fitness-coach-system (общая таблица)
+→ Уведомить exercise-video-bot (пишет gif_url в ту же таблицу)
 
-При изменении схемы Supabase:
-→ Обновить supabase/migrations/ (новый файл 000XX_...)
-→ Проверить что другие проекты не сломались
-
----
-*Скопируй это в начало диалога с Claude.ai*
+При изменении формата хранения GIF или полей exercises:
+→ Синхронизировать с Mini App (отображение в карточке упражнения) и с exercise-video-bot.

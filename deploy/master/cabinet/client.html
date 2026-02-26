@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Карточка клиента — Кабинет тренера</title>
+    <link rel="stylesheet" href="../css/common.css" />
+    <link rel="stylesheet" href="css/cabinet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div class="cabinet-loading">Загрузка…</div>
+    </div>
+
+    <script src="../js/supabase-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      window.cabinetSupabase = null;
+    </script>
+    <script src="js/cabinet-api.js"></script>
+    <script src="js/cabinet-overview.js"></script>
+    <script src="js/cabinet-workouts.js"></script>
+    <script src="js/cabinet-body.js"></script>
+    <script src="js/cabinet-nutrition.js"></script>
+    <script src="js/cabinet-calendar.js"></script>
+    <script src="js/cabinet-dashboard-ctrl.js"></script>
+    <script>
+      const TAB_IDS = ['overview', 'workouts', 'body', 'nutrition', 'calendar', 'dashboard-ctrl'];
+      let clientId = null;
+      let client = null;
+      let overviewData = null;
+
+      function getParam(name) {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name);
+      }
+
+      async function requireAuth() {
+        const {
+          data: { session },
+        } = await window.cabinetSupabase.auth.getSession();
+        if (!session) {
+          window.location.href =
+            '../login.html?redirect=' +
+            encodeURIComponent(window.location.pathname + window.location.search);
+          return false;
+        }
+        return true;
+      }
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      async function loadClientAndOverview() {
+        client = await getClientById(clientId);
+        const [sessions, blocks, wearable7, nutritionList] = await Promise.all([
+          getWorkoutSessions(clientId, null),
+          getClientBlocks(clientId),
+          getWearableData(clientId, 7),
+          getNutritionData(clientId, 7),
+        ]);
+        const usedByBlock = blocks.length ? await getBlockUsedCounts(blocks.map((b) => b.id)) : {};
+        const lastSession = sessions && sessions.length ? sessions[0] : null;
+        let lastSessionSets = [];
+        if (lastSession) {
+          lastSessionSets = await getWorkoutLog(lastSession.id);
+        }
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const nutritionYesterday =
+          nutritionList.find((n) => (n.date || '').slice(0, 10) === yesterdayStr) || null;
+        overviewData = {
+          client,
+          lastSession,
+          lastSessionSets,
+          blocks,
+          usedByBlock,
+          wearableLast7: wearable7,
+          nutritionYesterday: nutritionYesterday
+            ? {
+                ...nutritionYesterday,
+                goal_calories: client?.profile?.goal_calories || 2200,
+                goal_protein: client?.profile?.goal_protein || 180,
+                goal_fats: client?.profile?.goal_fats || 80,
+                goal_carbs: client?.profile?.goal_carbs || 250,
+              }
+            : null,
+        };
+      }
+
+      function renderClientPage() {
+        const programType = client?.profile?.program_type || '—';
+        const statusLabel = client?.status || '—';
+        const tabsHtml = TAB_IDS.map((id, i) => {
+          const labels = [
+            'Обзор',
+            'Тренировки',
+            'Тело и здоровье',
+            'Питание',
+            'Календарь',
+            'Дашборд клиента',
+          ];
+          const active = i === 0 ? ' active' : '';
+          return `<button type="button" class="cabinet-tab${active}" data-tab="${id}">${labels[i]}</button>`;
+        }).join('');
+        const panelsHtml =
+          '<div id="tab-overview" class="cabinet-tab-panel active">' +
+          renderOverview(overviewData) +
+          '</div>' +
+          '<div id="tab-workouts" class="cabinet-tab-panel"><div class="overview-placeholder">Загрузка вкладки Тренировки…</div></div>' +
+          '<div id="tab-body" class="cabinet-tab-panel"><div class="overview-placeholder">Загрузка вкладки Тело и здоровье…</div></div>' +
+          '<div id="tab-nutrition" class="cabinet-tab-panel"><div class="overview-placeholder">Загрузка вкладки Питание…</div></div>' +
+          '<div id="tab-calendar" class="cabinet-tab-panel"><div class="overview-placeholder">Загрузка календаря…</div></div>' +
+          '<div id="tab-dashboard-ctrl" class="cabinet-tab-panel"><div class="overview-placeholder">Загрузка настроек дашборда…</div></div>';
+
+        document.getElementById('app').innerHTML = `
+        <header class="header">
+          <div class="cabinet-client-header" style="max-width:1200px;margin:0 auto;padding:0 16px;flex-wrap:wrap;">
+            <a href="index.html" class="back-link">← Все клиенты</a>
+            <span style="color:white;font-weight:600;margin-left:8px;">${escapeHtml(client?.name || 'Клиент')}</span>
+            <span style="color:rgba(255,255,255,0.8);font-size:13px;margin-left:8px;">[${escapeHtml(programType)}] [${escapeHtml(statusLabel)}]</span>
+          </div>
+        </header>
+        <div class="cabinet-wrap">
+          <div class="cabinet-tabs">${tabsHtml}</div>
+          ${panelsHtml}
+        </div>`;
+
+        document.querySelectorAll('.cabinet-tab').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const tabId = btn.dataset.tab;
+            document.querySelectorAll('.cabinet-tab').forEach((b) => b.classList.remove('active'));
+            document
+              .querySelectorAll('.cabinet-tab-panel')
+              .forEach((p) => p.classList.remove('active'));
+            btn.classList.add('active');
+            const panel = document.getElementById('tab-' + tabId);
+            if (panel) panel.classList.add('active');
+            if (tabId === 'workouts') window.renderWorkoutsTab && window.renderWorkoutsTab();
+            if (tabId === 'body') window.renderBodyTab && window.renderBodyTab();
+            if (tabId === 'nutrition') window.renderNutritionTab && window.renderNutritionTab();
+            if (tabId === 'calendar') window.renderCalendarTab && window.renderCalendarTab();
+            if (tabId === 'dashboard-ctrl')
+              window.renderDashboardCtrlTab && window.renderDashboardCtrlTab();
+          });
+        });
+
+        document.querySelectorAll('[data-switch-tab="workouts"]').forEach((el) => {
+          el.addEventListener('click', () => {
+            document.querySelectorAll('.cabinet-tab').forEach((b) => b.classList.remove('active'));
+            document
+              .querySelectorAll('.cabinet-tab-panel')
+              .forEach((p) => p.classList.remove('active'));
+            const workoutsTab = document.querySelector('.cabinet-tab[data-tab="workouts"]');
+            const workoutsPanel = document.getElementById('tab-workouts');
+            if (workoutsTab) workoutsTab.classList.add('active');
+            if (workoutsPanel) workoutsPanel.classList.add('active');
+            if (window.renderWorkoutsTab) window.renderWorkoutsTab();
+          });
+        });
+      }
+
+      function showError(msg) {
+        document.getElementById('app').innerHTML =
+          '<div class="cabinet-wrap" style="padding:24px;">' +
+          '<p style="color:var(--danger);">' +
+          escapeHtml(msg) +
+          '</p>' +
+          '<p><a href="index.html">К списку клиентов</a></p></div>';
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        clientId = getParam('id');
+        if (!clientId) {
+          showError('Не указан ID клиента.');
+          return;
+        }
+        try {
+          if (typeof window.supabase === 'undefined' || !window.SUPABASE_URL) {
+            showError('Не загружен конфиг Supabase.');
+            return;
+          }
+          window.cabinetSupabase = window.supabase.createClient(
+            window.SUPABASE_URL,
+            window.SUPABASE_ANON_KEY
+          );
+          if (!(await requireAuth())) return;
+          window.__cabinetClientId = clientId;
+          await loadClientAndOverview();
+          const blocks = overviewData?.blocks || [];
+          window.__cabinetActiveBlockId =
+            client?.profile?.active_block_id ||
+            blocks.find((b) => b.status === 'active')?.id ||
+            blocks[0]?.id ||
+            null;
+          renderClientPage();
+        } catch (e) {
+          showError('Ошибка: ' + (e.message || String(e)));
+        }
+      });
+    </script>
+  </body>
+</html>
