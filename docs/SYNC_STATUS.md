@@ -1,6 +1,6 @@
 # Синхронизация с Claude — текущий статус проекта
 
-**Дата обновления:** 17 февраля 2026  
+**Дата обновления:** 16 марта 2026  
 **Назначение:** при открытии проекта в Claude.ai или Cursor скопировать этот файл в контекст, чтобы понимать, на каком этапе проект и как двигаться дальше.
 
 **Правила для AI:** при любом изменении кода указывать разделы [1]–[7] и контур (Master/Supabase или Mark/GAS). Полные правила: **docs/cursorrules_v2.1.md** (Cursor), **docs/CLAUDE_RULES_V2.1.md** (Claude).
@@ -58,6 +58,7 @@
 | Edge Function parse-workout | ✅ | Деплой выполнен, AI-парсинг текста тренировки |
 | Документация первого запуска | ✅ | supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md, supabase/TESTING_FIRST_TIME.md, DATA_RESTORE_AND_MARK.md |
 | Pre-commit и тесты | ✅ | Husky + lint-staged (ESLint, Prettier для staged файлов), npm test в .husky/pre-commit; tests/recognition.test.js — тесты распознавания упражнений |
+| Документация по мышечной нагрузке | ✅ | docs/MUSCLE_LOAD_LOGIC.md — зафиксирована текущая логика категорий упражнений, muscle_coefficients и распределения нагрузки без изменений кода |
 
 ---
 

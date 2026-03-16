@@ -466,6 +466,7 @@ python -m http.server 3000
 | `docs/SYNC_STATUS.md` | Текущий статус для синхронизации |
 | `docs/CURRENT_STATE_v5.md` | Общее состояние проекта |
 | `docs/ROADMAP_NEXT_STEPS.md` | Фазы и следующие шаги |
+| `docs/MUSCLE_LOAD_LOGIC.md` | Подробное описание логики категорий упражнений, muscle_coefficients и распределения нагрузки по телу (только документация, без изменений кода) |
 | `docs/cursorrules_v2.1.md` | Правила для Cursor (7 разделов, 2 контура) |
 | `docs/CLAUDE_RULES_V2.1.md` | Правила для Claude (этот файл) |
 | `supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md` | Как запустить Supabase |
