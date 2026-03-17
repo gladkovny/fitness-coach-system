@@ -105,8 +105,7 @@ fitness-coach-system/
 │
 ├── docs/                       — Документация
 │   ├── SYNC_STATUS.md            — текущий статус ⭐
-│   ├── CURRENT_STATE_v5.md       — состояние проекта
-│   ├── ROADMAP_NEXT_STEPS.md     — план развития
+│   ├── SYNC_STATUS.md            — состояние проекта, следующие шаги
 │   ├── ARCHITECTURE_V2.md        — архитектура
 │   ├── cursorrules_v2.1.md      — правила для Cursor (этот файл)
 │   └── CLAUDE_RULES_V2.1.md     — правила для Claude
@@ -370,7 +369,7 @@ const { data, error } = await supabase
 
 5. **Обновить документацию:**
    - docs/SYNC_STATUS.md — если изменился статус
-   - docs/CURRENT_STATE_v5.md — если добавлен функционал
+   - docs/SYNC_STATUS.md — если добавлен функционал
 ```
 
 ### 📌 Напоминание о коммите (для AI)

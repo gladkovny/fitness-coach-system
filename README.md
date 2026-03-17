@@ -50,7 +50,7 @@ gas/           — Google Apps Script (Backend)
 └── ONBOARDING_V2.gs           — Onboarding system
 
 docs/          — Documentation
-├── CURRENT_STATE_v5.md        — Current status
+├── SYNC_STATUS.md             — Current status (in docs/)
 ├── PROJECT_INSTRUCTIONS_v2.md — Project instructions
 └── API.md                     — API reference
 
@@ -158,7 +158,7 @@ archive/       — Archive (legacy clients, backups)
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) | Target architecture, stack, DB, API, integrations, monetization |
-| [ROADMAP_NEXT_STEPS.md](docs/ROADMAP_NEXT_STEPS.md) | Next steps by phase (stabilization → Supabase migration) |
+| [SYNC_STATUS.md](docs/SYNC_STATUS.md) | Current status and next steps |
 
 **Current phase:** 1 (stabilization) → 2 (migration to Supabase). DB schema and migrations live in `supabase/`.
 

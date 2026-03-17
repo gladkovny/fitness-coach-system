@@ -171,7 +171,7 @@
 | `docs/SYNC_STATUS.md` | Текущий этап и статус, что сделано и что дальше |
 | `docs/cursorrules_v2.1.md` | Полные правила для Cursor (7 разделов, контуры, формат, риски, откат) |
 | `docs/CLAUDE_RULES_V2.1.md` | Правила для Claude, детали по разделам |
-| `docs/CURRENT_STATE_v5.md` | Общее состояние проекта, API, тестирование |
+| `docs/SYNC_STATUS.md` | Общее состояние проекта, API, тестирование |
 | `supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md` | Первый запуск, архитектура Марка vs офлайн |
 | `docs/DEPLOY.md` | Как выложить сайты (Netlify, Vercel) |
 | `docs/ARCHITECTURE_V2.md` | Целевая архитектура и roadmap |

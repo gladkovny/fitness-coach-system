@@ -199,4 +199,4 @@
 | 3 | Отказ от GAS | Постепенно перенести оставшиеся действия в Supabase / Edge Functions. |
 | 4 | Деплой | Выложить фронт на хостинг с тем же конфигом Supabase. |
 
-Дополнительно: [AUTH_SETUP.md](AUTH_SETUP.md), [ROADMAP_NEXT_STEPS.md](../docs/ROADMAP_NEXT_STEPS.md).
+Дополнительно: [AUTH_SETUP.md](AUTH_SETUP.md), [SYNC_STATUS.md](../docs/SYNC_STATUS.md).

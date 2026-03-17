@@ -147,13 +147,12 @@ php -S localhost:3000
 |------|--------|
 | **docs/cursorrules_v2.1.md** | Правила для Cursor: 7 разделов, 2 контура, формат ответов, безопасность |
 | **docs/CLAUDE_RULES_V2.1.md** | Правила для Claude: детали разделов, health check, быстрые команды |
-| docs/SYNC_STATUS.md | Текущий статус (этот файл) |
-| docs/CURRENT_STATE_v5.md | Общее состояние проекта (GAS, API, тестирование) |
+| docs/SYNC_STATUS.md | Текущий статус (этот файл): общее состояние, GAS, API, тестирование |
 | supabase/ИНСТРУКЦИЯ_ПЕРВЫЙ_РАЗ.md | Пошаговый первый запуск, архитектура Марка vs офлайн |
 | supabase/TESTING_FIRST_TIME.md | Тестирование входа и дашборда |
 | supabase/DATA_RESTORE_AND_MARK.md | Восстановление данных Кирилла/Ярослава и Марка |
 | supabase/FRONTEND_INTEGRATION.md | Интеграция фронта с Supabase |
-| docs/ROADMAP_NEXT_STEPS.md | Фазы и следующие шаги по миграции |
+| docs/ARCHITECTURE_V2.md, ROADMAP_REFERENCE_ARCHITECTURE.md | Видение фаз (таймлайн устарел); план — здесь и в STATUS_ALL_PROJECTS (Telegram_Mini_App) |
 | docs/ROADMAP_REFERENCE_ARCHITECTURE.md | Приоритет «единая система», план до масштабирования |
 | docs/GIT_WORKFLOW.md | Когда и как коммитить, скрипт git-push.ps1 |
 | docs/CONTEXT7_SETUP.md | Настройка Context7 MCP |

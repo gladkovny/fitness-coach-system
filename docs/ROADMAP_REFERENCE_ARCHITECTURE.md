@@ -107,7 +107,7 @@
 | Документ | Назначение |
 |----------|------------|
 | [SYNC_STATUS.md](SYNC_STATUS.md) | Текущий статус: что сделано, как запустить, следующие шаги по приоритету |
-| [ROADMAP_NEXT_STEPS.md](ROADMAP_NEXT_STEPS.md) | Краткая выжимка фаз из ARCHITECTURE_V2 и статус миграции на Supabase (исторический и справочный контекст) |
+| [SYNC_STATUS.md](SYNC_STATUS.md) | Текущий статус и следующие шаги по миграции |
 | [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) | Полная целевая архитектура и видение продукта |
 | [excalidraw-saas-reference-architecture.excalidraw.json](excalidraw-saas-reference-architecture.excalidraw.json) | Визуализация 6 слоёв Reference Architecture |
 | [SAAS_ARCHITECTURE_ANALYSIS_REPORT.md](SAAS_ARCHITECTURE_ANALYSIS_REPORT.md) | Анализ конкурентов и рекомендации (в т.ч. для этапа масштабирования) |
